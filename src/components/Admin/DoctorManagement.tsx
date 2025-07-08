@@ -270,10 +270,16 @@ const DoctorManagement: React.FC = () => {
                 </div>
               </div>
               <div className="flex space-x-2">
-                <button className="text-gray-400 hover:text-blue-600 transition-colors">
+                <button 
+                  onClick={() => handleEdit(doctor)}
+                  className="text-gray-400 hover:text-blue-600 transition-colors"
+                >
                   <Edit className="w-4 h-4" />
                 </button>
-                <button className="text-gray-400 hover:text-red-600 transition-colors">
+                <button 
+                  onClick={() => handleDelete(doctor.id)}
+                  className="text-gray-400 hover:text-red-600 transition-colors"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
