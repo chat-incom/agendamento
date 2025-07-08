@@ -107,19 +107,19 @@ const LoginScreen: React.FC = () => {
           </form>
 
           <div className="mt-8 pt-6 border-t border-gray-200">
-            <p className="text-center text-gray-600 mb-4">
-              Paciente? Agende sua consulta sem cadastro
-            </p>
-            <button
-              onClick={handleGuestAccess}
-              className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transform hover:scale-105 transition-all duration-200 shadow-lg"
-            >
-              Agendar Consulta
-            </button>
-          </div>
-
-          <div className="mt-6 text-center text-sm text-gray-500">
-            <p>Demo: admin / admin</p>
+            <div className="text-center">
+              <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-6 rounded-xl shadow-lg mb-4">
+                <Calendar className="w-12 h-12 text-white mx-auto mb-3" />
+                <h3 className="text-xl font-bold text-white mb-2">Agende sua Consulta</h3>
+                <p className="text-green-100 mb-4">Rápido, fácil e sem cadastro necessário</p>
+                <button
+                  onClick={handleGuestAccess}
+                  className="bg-white text-green-600 py-3 px-8 rounded-lg font-bold hover:bg-green-50 transform hover:scale-105 transition-all duration-200 shadow-md"
+                >
+                  Começar Agendamento
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

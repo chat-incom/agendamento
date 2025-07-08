@@ -6,23 +6,49 @@ import { Specialty } from '../../types';
 const SpecialtyManagement: React.FC = () => {
   const { state, dispatch } = useApp();
   const [showForm, setShowForm] = useState(false);
+  const [editingSpecialty, setEditingSpecialty] = useState<Specialty | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
   });
 
+  const handleEdit = (specialty: Specialty) => {
+    setEditingSpecialty(specialty);
+    setFormData({
+      name: specialty.name,
+      description: specialty.description,
+    });
+    setShowForm(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta especialidade?')) {
+      dispatch({ type: 'DELETE_SPECIALTY', payload: id });
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newSpecialty: Specialty = {
-      id: Date.now().toString(),
-      name: formData.name,
-      description: formData.description,
-      createdAt: new Date(),
-    };
-
-    dispatch({ type: 'ADD_SPECIALTY', payload: newSpecialty });
+    if (editingSpecialty) {
+      const updatedSpecialty: Specialty = {
+        ...editingSpecialty,
+        name: formData.name,
+        description: formData.description,
+      };
+      dispatch({ type: 'UPDATE_SPECIALTY', payload: updatedSpecialty });
+    } else {
+      const newSpecialty: Specialty = {
+        id: Date.now().toString(),
+        name: formData.name,
+        description: formData.description,
+        createdAt: new Date(),
+      };
+      dispatch({ type: 'ADD_SPECIALTY', payload: newSpecialty });
+    }
+    
     setFormData({ name: '', description: '' });
+    setEditingSpecialty(null);
     setShowForm(false);
   };
 
@@ -105,10 +131,16 @@ const SpecialtyManagement: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-800">{specialty.name}</h3>
               </div>
               <div className="flex space-x-2">
-                <button className="text-gray-400 hover:text-blue-600 transition-colors">
+                <button 
+                  onClick={() => handleEdit(specialty)}
+                  className="text-gray-400 hover:text-blue-600 transition-colors"
+                >
                   <Edit className="w-4 h-4" />
                 </button>
-                <button className="text-gray-400 hover:text-red-600 transition-colors">
+                <button 
+                  onClick={() => handleDelete(specialty.id)}
+                  className="text-gray-400 hover:text-red-600 transition-colors"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>

@@ -25,6 +25,14 @@ const InsuranceManagement: React.FC = () => {
     setShowForm(false);
   };
 
+  const handleEdit = (insurance: Insurance) => {
+    // Edit functionality to be implemented
+  };
+
+  const handleDelete = (id: string) => {
+    // Delete functionality to be implemented
+  };
+
   const publicInsurances = state.insurances.filter(i => i.type === 'public');
   const privateInsurances = state.insurances.filter(i => i.type === 'private');
 
@@ -118,10 +126,16 @@ const InsuranceManagement: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <button className="text-gray-400 hover:text-blue-600 transition-colors">
+                    <button 
+                      onClick={() => handleEdit(insurance)}
+                      className="text-gray-400 hover:text-blue-600 transition-colors"
+                    >
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button className="text-gray-400 hover:text-red-600 transition-colors">
+                    <button 
+                      onClick={() => handleDelete(insurance.id)}
+                      className="text-gray-400 hover:text-red-600 transition-colors"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -154,10 +168,16 @@ const InsuranceManagement: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <button className="text-gray-400 hover:text-blue-600 transition-colors">
+                    <button 
+                      onClick={() => handleEdit(insurance)}
+                      className="text-gray-400 hover:text-blue-600 transition-colors"
+                    >
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button className="text-gray-400 hover:text-red-600 transition-colors">
+                    <button 
+                      onClick={() => handleDelete(insurance.id)}
+                      className="text-gray-400 hover:text-red-600 transition-colors"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>

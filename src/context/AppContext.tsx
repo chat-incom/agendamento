@@ -18,7 +18,12 @@ type AppAction =
   | { type: 'ADD_DOCTOR'; payload: Doctor }
   | { type: 'ADD_INSURANCE'; payload: Insurance }
   | { type: 'ADD_APPOINTMENT'; payload: Appointment }
-  | { type: 'UPDATE_DOCTOR'; payload: Doctor };
+  | { type: 'UPDATE_DOCTOR'; payload: Doctor }
+  | { type: 'UPDATE_SPECIALTY'; payload: Specialty }
+  | { type: 'UPDATE_INSURANCE'; payload: Insurance }
+  | { type: 'DELETE_DOCTOR'; payload: string }
+  | { type: 'DELETE_SPECIALTY'; payload: string }
+  | { type: 'DELETE_INSURANCE'; payload: string };
 
 const initialState: AppState = {
   specialties: [
@@ -76,6 +81,35 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         doctors: state.doctors.map(doctor =>
           doctor.id === action.payload.id ? action.payload : doctor
         ),
+      };
+    case 'UPDATE_SPECIALTY':
+      return {
+        ...state,
+        specialties: state.specialties.map(specialty =>
+          specialty.id === action.payload.id ? action.payload : specialty
+        ),
+      };
+    case 'UPDATE_INSURANCE':
+      return {
+        ...state,
+        insurances: state.insurances.map(insurance =>
+          insurance.id === action.payload.id ? action.payload : insurance
+        ),
+      };
+    case 'DELETE_DOCTOR':
+      return {
+        ...state,
+        doctors: state.doctors.filter(doctor => doctor.id !== action.payload),
+      };
+    case 'DELETE_SPECIALTY':
+      return {
+        ...state,
+        specialties: state.specialties.filter(specialty => specialty.id !== action.payload),
+      };
+    case 'DELETE_INSURANCE':
+      return {
+        ...state,
+        insurances: state.insurances.filter(insurance => insurance.id !== action.payload),
       };
     default:
       return state;
