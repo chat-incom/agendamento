@@ -32,21 +32,24 @@ const DoctorSelection: React.FC<DoctorSelectionProps> = ({ onDoctorSelect, onBac
 
   const getWorkingDaysText = (workingHours: any[]) => {
     if (workingHours.length === 0) return 'Horários não definidos';
-    
-    const days = workingHours.map(wh => {
-      const dayNames: { [key: string]: string } = {
-        monday: 'Seg',
-        tuesday: 'Ter',
-        wednesday: 'Qua',
-        thursday: 'Qui',
-        friday: 'Sex',
-        saturday: 'Sáb',
-        sunday: 'Dom'
-      };
-      return dayNames[wh.day];
+
+    const dayNames: { [key: string]: string } = {
+      monday: 'Seg',
+      tuesday: 'Ter',
+      wednesday: 'Qua',
+      thursday: 'Qui',
+      friday: 'Sex',
+      saturday: 'Sáb',
+      sunday: 'Dom'
+    };
+
+    const dias = workingHours.map((wh) => {
+      const dia = dayNames[wh.day] || wh.day;
+      const intervalo = wh.tempo_intervalo ? ` (${wh.tempo_intervalo} min)` : '';
+      return `${dia}${intervalo}`;
     });
-    
-    return days.join(', ');
+
+    return dias.join(', ');
   };
 
   return (
