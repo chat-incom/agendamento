@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import { useEffect } from 'react';
 import { Doctor, Specialty, Insurance, Appointment, Patient } from '../types';
+import * as db from '../services/database';
 
 interface AppState {
   specialties: Specialty[];
@@ -25,35 +27,26 @@ type AppAction =
   | { type: 'DELETE_SPECIALTY'; payload: string }
   | { type: 'DELETE_INSURANCE'; payload: string };
 
+// Load initial data from database
+const loadInitialData = async () => {
+  try {
+    const [specialties, doctors, insurances, appointments] = await Promise.all([
+      db.getSpecialties(),
+      db.getDoctors(), 
+      db.getInsurances(),
+      db.getAppointments()
+    ]);
+    return { specialties, doctors, insurances, appointments };
+  } catch (error) {
+    console.error('Error loading data:', error);
+    return null;
+  }
+};
+
 const initialState: AppState = {
-  specialties: [
-    { id: '1', name: 'Cardiologia', description: 'Especialidade focada no coração e sistema circulatório', createdAt: new Date() },
-    { id: '2', name: 'Dermatologia', description: 'Cuidados com a pele, cabelos e unhas', createdAt: new Date() },
-    { id: '3', name: 'Pediatria', description: 'Especialidade médica dedicada ao cuidado infantil', createdAt: new Date() },
-  ],
-  doctors: [
-    {
-      id: '1',
-      name: 'Dr. João Silva',
-      crm: 'CRM/SP 123456',
-      specialtyId: '1',
-      insurances: ['1', '2'],
-      workingHours: [
-        { day: 'monday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-        { day: 'tuesday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-        { day: 'wednesday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-        { day: 'thursday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-        { day: 'friday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-      ],
-      createdAt: new Date(),
-    },
-  ],
-  insurances: [
-    { id: '1', name: 'SUS', type: 'public' },
-    { id: '2', name: 'Unimed', type: 'private' },
-    { id: '3', name: 'Bradesco Saúde', type: 'private' },
-    { id: '4', name: 'Amil', type: 'private' },
-  ],
+  specialties: [],
+  doctors: [],
+  insurances: [],
   appointments: [],
   isLoggedIn: false,
   currentView: 'login',
@@ -61,6 +54,8 @@ const initialState: AppState = {
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
+    case 'LOAD_DATA':
+      return { ...state, ...action.payload };
     case 'SET_VIEW':
       return { ...state, currentView: action.payload };
     case 'LOGIN':
@@ -68,14 +63,19 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'LOGOUT':
       return { ...state, isLoggedIn: false, currentView: 'login' };
     case 'ADD_SPECIALTY':
+      db.addSpecialty(action.payload).catch(console.error);
       return { ...state, specialties: [...state.specialties, action.payload] };
     case 'ADD_DOCTOR':
+      db.addDoctor(action.payload).catch(console.error);
       return { ...state, doctors: [...state.doctors, action.payload] };
     case 'ADD_INSURANCE':
+      db.addInsurance(action.payload).catch(console.error);
       return { ...state, insurances: [...state.insurances, action.payload] };
     case 'ADD_APPOINTMENT':
+      db.addAppointment(action.payload).catch(console.error);
       return { ...state, appointments: [...state.appointments, action.payload] };
     case 'UPDATE_DOCTOR':
+      db.updateDoctor(action.payload).catch(console.error);
       return {
         ...state,
         doctors: state.doctors.map(doctor =>
@@ -83,6 +83,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ),
       };
     case 'UPDATE_SPECIALTY':
+      db.updateSpecialty(action.payload).catch(console.error);
       return {
         ...state,
         specialties: state.specialties.map(specialty =>
@@ -90,6 +91,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ),
       };
     case 'UPDATE_INSURANCE':
+      db.updateInsurance(action.payload).catch(console.error);
       return {
         ...state,
         insurances: state.insurances.map(insurance =>
@@ -97,16 +99,19 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ),
       };
     case 'DELETE_DOCTOR':
+      db.deleteDoctor(action.payload).catch(console.error);
       return {
         ...state,
         doctors: state.doctors.filter(doctor => doctor.id !== action.payload),
       };
     case 'DELETE_SPECIALTY':
+      db.deleteSpecialty(action.payload).catch(console.error);
       return {
         ...state,
         specialties: state.specialties.filter(specialty => specialty.id !== action.payload),
       };
     case 'DELETE_INSURANCE':
+      db.deleteInsurance(action.payload).catch(console.error);
       return {
         ...state,
         insurances: state.insurances.filter(insurance => insurance.id !== action.payload),
@@ -126,6 +131,14 @@ const AppContext = createContext<{
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
+
+  useEffect(() => {
+    loadInitialData().then(data => {
+      if (data) {
+        dispatch({ type: 'LOAD_DATA' as any, payload: data });
+      }
+    });
+  }, []);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
