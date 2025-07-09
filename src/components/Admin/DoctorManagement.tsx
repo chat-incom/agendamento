@@ -18,7 +18,7 @@ const DoctorManagement: React.FC = () => {
     day: 'monday',
     startTime: '08:00',
     endTime: '17:00',
-    intervalMinutes: 30,
+    intervalMinutes: 15,
   };
 
   const [newWorkingHour, setNewWorkingHour] = useState<WorkingHours>(defaultWorkingHours);
