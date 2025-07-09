@@ -35,6 +35,11 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   });
 
   const availableDates = getNextBusinessDays(14);
+  
+  // Filter dates to only show those with available doctors
+  const datesWithAvailableDoctors = availableDates.filter(date => {
+    return getAvailableTimeSlots(date).some(slot => slot.available);
+  });
   const [showSuccess, setShowSuccess] = useState(false);
 
   const getAvailableTimeSlots = (date: string): TimeSlot[] => {
@@ -199,7 +204,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                 Escolha a Data
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-                {availableDates.map((date) => (
+                {datesWithAvailableDoctors.map((date) => (
                   <button
                     key={date}
                     onClick={() => onDateSelect(date)}

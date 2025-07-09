@@ -6,31 +6,49 @@ import { Insurance } from '../../types';
 const InsuranceManagement: React.FC = () => {
   const { state, dispatch } = useApp();
   const [showForm, setShowForm] = useState(false);
+  const [editingInsurance, setEditingInsurance] = useState<Insurance | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     type: 'private' as 'public' | 'private',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const newInsurance: Insurance = {
-      id: Date.now().toString(),
-      name: formData.name,
-      type: formData.type,
-    };
-
-    dispatch({ type: 'ADD_INSURANCE', payload: newInsurance });
-    setFormData({ name: '', type: 'private' });
-    setShowForm(false);
-  };
-
   const handleEdit = (insurance: Insurance) => {
-    // Edit functionality to be implemented
+    setEditingInsurance(insurance);
+    setFormData({
+      name: insurance.name,
+      type: insurance.type,
+    });
+    setShowForm(true);
   };
 
   const handleDelete = (id: string) => {
-    // Delete functionality to be implemented
+    if (confirm('Tem certeza que deseja excluir este convênio?')) {
+      dispatch({ type: 'DELETE_INSURANCE', payload: id });
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (editingInsurance) {
+      const updatedInsurance: Insurance = {
+        ...editingInsurance,
+        name: formData.name,
+        type: formData.type,
+      };
+      dispatch({ type: 'UPDATE_INSURANCE', payload: updatedInsurance });
+    } else {
+      const newInsurance: Insurance = {
+        id: Date.now().toString(),
+        name: formData.name,
+        type: formData.type,
+      };
+      dispatch({ type: 'ADD_INSURANCE', payload: newInsurance });
+    }
+    
+    setFormData({ name: '', type: 'private' });
+    setEditingInsurance(null);
+    setShowForm(false);
   };
 
   const publicInsurances = state.insurances.filter(i => i.type === 'public');
@@ -57,7 +75,7 @@ const InsuranceManagement: React.FC = () => {
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Novo Convênio</h3>
+            <h3 className="text-lg font-semibold mb-4">{editingInsurance ? 'Editar Convênio' : 'Novo Convênio'}</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -96,7 +114,7 @@ const InsuranceManagement: React.FC = () => {
                   type="submit"
                   className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  Salvar
+                  {editingInsurance ? 'Atualizar' : 'Salvar'}
                 </button>
               </div>
             </form>

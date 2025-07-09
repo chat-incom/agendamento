@@ -22,6 +22,7 @@ const DoctorManagement: React.FC = () => {
   };
 
   const [newWorkingHour, setNewWorkingHour] = useState<WorkingHours>(defaultWorkingHours);
+  const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
 
   const dayLabels = {
     monday: 'Segunda-feira',
@@ -33,20 +34,50 @@ const DoctorManagement: React.FC = () => {
     sunday: 'Domingo',
   };
 
+  const handleEdit = (doctor: Doctor) => {
+    setEditingDoctor(doctor);
+    setFormData({
+      name: doctor.name,
+      crm: doctor.crm,
+      specialtyId: doctor.specialtyId,
+      selectedInsurances: doctor.insurances,
+      workingHours: doctor.workingHours,
+    });
+    setShowForm(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este médico?')) {
+      dispatch({ type: 'DELETE_DOCTOR', payload: id });
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newDoctor: Doctor = {
-      id: Date.now().toString(),
-      name: formData.name,
-      crm: formData.crm,
-      specialtyId: formData.specialtyId,
-      insurances: formData.selectedInsurances,
-      workingHours: formData.workingHours,
-      createdAt: new Date(),
-    };
-
-    dispatch({ type: 'ADD_DOCTOR', payload: newDoctor });
+    if (editingDoctor) {
+      const updatedDoctor: Doctor = {
+        ...editingDoctor,
+        name: formData.name,
+        crm: formData.crm,
+        specialtyId: formData.specialtyId,
+        insurances: formData.selectedInsurances,
+        workingHours: formData.workingHours,
+      };
+      dispatch({ type: 'UPDATE_DOCTOR', payload: updatedDoctor });
+    } else {
+      const newDoctor: Doctor = {
+        id: Date.now().toString(),
+        name: formData.name,
+        crm: formData.crm,
+        specialtyId: formData.specialtyId,
+        insurances: formData.selectedInsurances,
+        workingHours: formData.workingHours,
+        createdAt: new Date(),
+      };
+      dispatch({ type: 'ADD_DOCTOR', payload: newDoctor });
+    }
+    
     setFormData({
       name: '',
       crm: '',
@@ -54,6 +85,7 @@ const DoctorManagement: React.FC = () => {
       selectedInsurances: [],
       workingHours: [],
     });
+    setEditingDoctor(null);
     setShowForm(false);
   };
 
@@ -107,7 +139,7 @@ const DoctorManagement: React.FC = () => {
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-4">Novo Médico</h3>
+            <h3 className="text-lg font-semibold mb-4">{editingDoctor ? 'Editar Médico' : 'Novo Médico'}</h3>
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -247,7 +279,7 @@ const DoctorManagement: React.FC = () => {
                   type="submit"
                   className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  Salvar
+                  {editingDoctor ? 'Atualizar' : 'Salvar'}
                 </button>
               </div>
             </form>

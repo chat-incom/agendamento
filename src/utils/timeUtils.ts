@@ -56,7 +56,7 @@ export const getNextBusinessDays = (count: number): string[] => {
   const days: string[] = [];
   const today = new Date();
   
-  for (let i = 1; i <= count; i++) {
+  for (let i = 1; days.length < count; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
     
@@ -67,4 +67,3 @@ export const getNextBusinessDays = (count: number): string[] => {
   }
   
   return days;
-};
