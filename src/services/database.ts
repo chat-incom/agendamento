@@ -3,27 +3,27 @@ import { Doctor, Specialty, Insurance, Appointment } from '../types';
 
 // Check if Supabase is configured before making requests
 const checkSupabase = () => {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase not configured');
+  if (!isSupabaseConfigured() || !supabase) {
+    throw new Error('Supabase não configurado. Clique em "Connect to Supabase" no topo da página.');
   }
 };
 
 // Specialties
 export const getSpecialties = async (): Promise<Specialty[]> => {
   checkSupabase();
-  const { data, error } = await supabase.from('especialidades').select('*');
+  const { data, error } = await supabase!.from('especialidades').select('*');
   if (error) throw error;
-  return data.map(item => ({
+  return data?.map(item => ({
     id: item.id,
     name: item.nome,
     description: item.nome,
     createdAt: new Date()
-  }));
+  })) || [];
 };
 
-export const addSpecialty = async (specialty: Specialty) => {
+export const addSpecialty = async (specialty: Specialty): Promise<Specialty> => {
   checkSupabase();
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('especialidades')
     .insert({ nome: specialty.name })
     .select()
@@ -32,9 +32,9 @@ export const addSpecialty = async (specialty: Specialty) => {
   return { ...specialty, id: data.id, createdAt: new Date() };
 };
 
-export const updateSpecialty = async (specialty: Specialty) => {
+export const updateSpecialty = async (specialty: Specialty): Promise<Specialty> => {
   checkSupabase();
-  const { error } = await supabase
+  const { error } = await supabase!
     .from('especialidades')
     .update({ nome: specialty.name })
     .eq('id', specialty.id);
@@ -42,27 +42,27 @@ export const updateSpecialty = async (specialty: Specialty) => {
   return specialty;
 };
 
-export const deleteSpecialty = async (id: string) => {
+export const deleteSpecialty = async (id: string): Promise<void> => {
   checkSupabase();
-  const { error } = await supabase.from('especialidades').delete().eq('id', id);
+  const { error } = await supabase!.from('especialidades').delete().eq('id', id);
   if (error) throw error;
 };
 
 // Insurances
 export const getInsurances = async (): Promise<Insurance[]> => {
   checkSupabase();
-  const { data, error } = await supabase.from('convenios').select('*');
+  const { data, error } = await supabase!.from('convenios').select('*');
   if (error) throw error;
-  return data.map(item => ({
+  return data?.map(item => ({
     id: item.id,
     name: item.nome,
     type: 'private' as const
-  }));
+  })) || [];
 };
 
-export const addInsurance = async (insurance: Insurance) => {
+export const addInsurance = async (insurance: Insurance): Promise<Insurance> => {
   checkSupabase();
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('convenios')
     .insert({ nome: insurance.name })
     .select()
@@ -71,9 +71,9 @@ export const addInsurance = async (insurance: Insurance) => {
   return { ...insurance, id: data.id };
 };
 
-export const updateInsurance = async (insurance: Insurance) => {
+export const updateInsurance = async (insurance: Insurance): Promise<Insurance> => {
   checkSupabase();
-  const { error } = await supabase
+  const { error } = await supabase!
     .from('convenios')
     .update({ nome: insurance.name })
     .eq('id', insurance.id);
@@ -81,16 +81,16 @@ export const updateInsurance = async (insurance: Insurance) => {
   return insurance;
 };
 
-export const deleteInsurance = async (id: string) => {
+export const deleteInsurance = async (id: string): Promise<void> => {
   checkSupabase();
-  const { error } = await supabase.from('convenios').delete().eq('id', id);
+  const { error } = await supabase!.from('convenios').delete().eq('id', id);
   if (error) throw error;
 };
 
 // Doctors
 export const getDoctors = async (): Promise<Doctor[]> => {
   checkSupabase();
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('medicos')
     .select(`
       *,
@@ -99,7 +99,7 @@ export const getDoctors = async (): Promise<Doctor[]> => {
     `);
   if (error) throw error;
   
-  return data.map(item => ({
+  return data?.map(item => ({
     id: item.id,
     name: item.nome,
     crm: item.crm,
@@ -112,12 +112,12 @@ export const getDoctors = async (): Promise<Doctor[]> => {
       intervalMinutes: 30
     })) || [],
     createdAt: new Date()
-  }));
+  })) || [];
 };
 
-export const addDoctor = async (doctor: Doctor) => {
+export const addDoctor = async (doctor: Doctor): Promise<Doctor> => {
   checkSupabase();
-  const { data: doctorData, error: doctorError } = await supabase
+  const { data: doctorData, error: doctorError } = await supabase!
     .from('medicos')
     .insert({
       nome: doctor.name,
@@ -131,7 +131,7 @@ export const addDoctor = async (doctor: Doctor) => {
 
   // Add insurance relationships
   if (doctor.insurances.length > 0) {
-    const { error: insuranceError } = await supabase
+    const { error: insuranceError } = await supabase!
       .from('medico_convenios')
       .insert(
         doctor.insurances.map(insuranceId => ({
@@ -144,7 +144,7 @@ export const addDoctor = async (doctor: Doctor) => {
 
   // Add working hours
   if (doctor.workingHours.length > 0) {
-    const { error: scheduleError } = await supabase
+    const { error: scheduleError } = await supabase!
       .from('agenda')
       .insert(
         doctor.workingHours.map(wh => ({
@@ -160,9 +160,9 @@ export const addDoctor = async (doctor: Doctor) => {
   return { ...doctor, id: doctorData.id, createdAt: new Date() };
 };
 
-export const updateDoctor = async (doctor: Doctor) => {
+export const updateDoctor = async (doctor: Doctor): Promise<Doctor> => {
   checkSupabase();
-  const { error: doctorError } = await supabase
+  const { error: doctorError } = await supabase!
     .from('medicos')
     .update({
       nome: doctor.name,
@@ -174,9 +174,9 @@ export const updateDoctor = async (doctor: Doctor) => {
   if (doctorError) throw doctorError;
 
   // Update insurance relationships
-  await supabase.from('medico_convenios').delete().eq('medico_id', doctor.id);
+  await supabase!.from('medico_convenios').delete().eq('medico_id', doctor.id);
   if (doctor.insurances.length > 0) {
-    const { error: insuranceError } = await supabase
+    const { error: insuranceError } = await supabase!
       .from('medico_convenios')
       .insert(
         doctor.insurances.map(insuranceId => ({
@@ -188,9 +188,9 @@ export const updateDoctor = async (doctor: Doctor) => {
   }
 
   // Update working hours
-  await supabase.from('agenda').delete().eq('medico_id', doctor.id);
+  await supabase!.from('agenda').delete().eq('medico_id', doctor.id);
   if (doctor.workingHours.length > 0) {
-    const { error: scheduleError } = await supabase
+    const { error: scheduleError } = await supabase!
       .from('agenda')
       .insert(
         doctor.workingHours.map(wh => ({
@@ -206,16 +206,16 @@ export const updateDoctor = async (doctor: Doctor) => {
   return doctor;
 };
 
-export const deleteDoctor = async (id: string) => {
+export const deleteDoctor = async (id: string): Promise<void> => {
   checkSupabase();
-  const { error } = await supabase.from('medicos').delete().eq('id', id);
+  const { error } = await supabase!.from('medicos').delete().eq('id', id);
   if (error) throw error;
 };
 
 // Appointments
 export const getAppointments = async (): Promise<Appointment[]> => {
   checkSupabase();
-  const { data, error } = await supabase
+  const { data, error } = await supabase!
     .from('agendamentos')
     .select(`
       *,
@@ -223,7 +223,7 @@ export const getAppointments = async (): Promise<Appointment[]> => {
     `);
   if (error) throw error;
   
-  return data.map(item => ({
+  return data?.map(item => ({
     id: item.id,
     doctorId: item.medico_id,
     date: item.data,
@@ -238,13 +238,13 @@ export const getAppointments = async (): Promise<Appointment[]> => {
     insuranceId: item.convenio_id,
     status: 'scheduled' as const,
     createdAt: new Date(item.criado_em)
-  }));
+  })) || [];
 };
 
-export const addAppointment = async (appointment: Appointment) => {
+export const addAppointment = async (appointment: Appointment): Promise<Appointment> => {
   checkSupabase();
   // First create user
-  const { data: userData, error: userError } = await supabase
+  const { data: userData, error: userError } = await supabase!
     .from('usuarios')
     .insert({
       nome: appointment.patient.name,
@@ -258,7 +258,7 @@ export const addAppointment = async (appointment: Appointment) => {
   if (userError) throw userError;
 
   // Then create appointment
-  const { data: appointmentData, error: appointmentError } = await supabase
+  const { data: appointmentData, error: appointmentError } = await supabase!
     .from('agendamentos')
     .insert({
       usuario_id: userData.id,
@@ -276,7 +276,7 @@ export const addAppointment = async (appointment: Appointment) => {
 };
 
 // Helper functions
-const getDayFromPortuguese = (day: string) => {
+const getDayFromPortuguese = (day: string): string => {
   const dayMap: { [key: string]: string } = {
     'Segunda': 'monday',
     'Terça': 'tuesday', 
@@ -289,7 +289,7 @@ const getDayFromPortuguese = (day: string) => {
   return dayMap[day] || 'monday';
 };
 
-const getPortugueseDay = (day: string) => {
+const getPortugueseDay = (day: string): string => {
   const dayMap: { [key: string]: string } = {
     'monday': 'Segunda',
     'tuesday': 'Terça',

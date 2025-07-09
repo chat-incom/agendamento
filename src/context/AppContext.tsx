@@ -78,19 +78,29 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, isLoggedIn: false, currentView: 'login' };
     case 'ADD_SPECIALTY':
       // Try to save to database, but don't block UI
-      db.addSpecialty(action.payload).catch(console.error);
+      db.addSpecialty(action.payload).catch(err => {
+        console.warn('Failed to save specialty to database:', err.message);
+      });
       return { ...state, specialties: [...state.specialties, action.payload] };
     case 'ADD_DOCTOR':
-      db.addDoctor(action.payload).catch(console.error);
+      db.addDoctor(action.payload).catch(err => {
+        console.warn('Failed to save doctor to database:', err.message);
+      });
       return { ...state, doctors: [...state.doctors, action.payload] };
     case 'ADD_INSURANCE':
-      db.addInsurance(action.payload).catch(console.error);
+      db.addInsurance(action.payload).catch(err => {
+        console.warn('Failed to save insurance to database:', err.message);
+      });
       return { ...state, insurances: [...state.insurances, action.payload] };
     case 'ADD_APPOINTMENT':
-      db.addAppointment(action.payload).catch(console.error);
+      db.addAppointment(action.payload).catch(err => {
+        console.warn('Failed to save appointment to database:', err.message);
+      });
       return { ...state, appointments: [...state.appointments, action.payload] };
     case 'UPDATE_DOCTOR':
-      db.updateDoctor(action.payload).catch(console.error);
+      db.updateDoctor(action.payload).catch(err => {
+        console.warn('Failed to update doctor in database:', err.message);
+      });
       return {
         ...state,
         doctors: state.doctors.map(doctor =>
@@ -98,7 +108,9 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ),
       };
     case 'UPDATE_SPECIALTY':
-      db.updateSpecialty(action.payload).catch(console.error);
+      db.updateSpecialty(action.payload).catch(err => {
+        console.warn('Failed to update specialty in database:', err.message);
+      });
       return {
         ...state,
         specialties: state.specialties.map(specialty =>
@@ -106,7 +118,9 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ),
       };
     case 'UPDATE_INSURANCE':
-      db.updateInsurance(action.payload).catch(console.error);
+      db.updateInsurance(action.payload).catch(err => {
+        console.warn('Failed to update insurance in database:', err.message);
+      });
       return {
         ...state,
         insurances: state.insurances.map(insurance =>
@@ -114,19 +128,25 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ),
       };
     case 'DELETE_DOCTOR':
-      db.deleteDoctor(action.payload).catch(console.error);
+      db.deleteDoctor(action.payload).catch(err => {
+        console.warn('Failed to delete doctor from database:', err.message);
+      });
       return {
         ...state,
         doctors: state.doctors.filter(doctor => doctor.id !== action.payload),
       };
     case 'DELETE_SPECIALTY':
-      db.deleteSpecialty(action.payload).catch(console.error);
+      db.deleteSpecialty(action.payload).catch(err => {
+        console.warn('Failed to delete specialty from database:', err.message);
+      });
       return {
         ...state,
         specialties: state.specialties.filter(specialty => specialty.id !== action.payload),
       };
     case 'DELETE_INSURANCE':
-      db.deleteInsurance(action.payload).catch(console.error);
+      db.deleteInsurance(action.payload).catch(err => {
+        console.warn('Failed to delete insurance from database:', err.message);
+      });
       return {
         ...state,
         insurances: state.insurances.filter(insurance => insurance.id !== action.payload),

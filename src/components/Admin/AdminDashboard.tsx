@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { LogOut, Plus, Users, Calendar, Shield, Activity } from 'lucide-react';
+import ConnectionStatus from '../ConnectionStatus';
 import SpecialtyManagement from './SpecialtyManagement';
 import DoctorManagement from './DoctorManagement';
 import InsuranceManagement from './InsuranceManagement';
@@ -34,6 +35,7 @@ const AdminDashboard: React.FC = () => {
               <h1 className="text-xl font-bold text-gray-800">Painel Administrativo</h1>
             </div>
             <div className="flex items-center space-x-4">
+              <ConnectionStatus />
               <button
                 onClick={() => dispatch({ type: 'SET_VIEW', payload: 'booking' })}
                 className="text-gray-600 hover:text-blue-600 transition-colors"
