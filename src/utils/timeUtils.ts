@@ -1,70 +1,50 @@
-import { WorkingHours, TimeSlot, Appointment } from '../types';
+// utils/timeUtils.ts
+import { WorkingHours, Appointment, TimeSlot } from '../types';
 
-export const generateTimeSlots = (
+/**
+ * Gera os horários disponíveis para um dado período de trabalho do médico,
+ * respeitando o intervalo definido na agenda (workingHours.interval).
+ */
+export function generateTimeSlots(
   workingHours: WorkingHours,
   date: string,
   appointments: Appointment[],
   doctorId: string
-): TimeSlot[] => {
+): TimeSlot[] {
   const slots: TimeSlot[] = [];
-  const [startHour, startMinute] = workingHours.startTime.split(':').map(Number);
-  const [endHour, endMinute] = workingHours.endTime.split(':').map(Number);
-  
-  const startTime = startHour * 60 + startMinute;
-  const endTime = endHour * 60 + endMinute;
-  
-  // Get booked appointments for this doctor and date
-  const bookedSlots = appointments
-    .filter(apt => apt.doctorId === doctorId && apt.date === date && apt.status === 'scheduled')
-    .map(apt => apt.time);
-  
-  for (let time = startTime; time < endTime; time += workingHours.intervalMinutes) {
-    const hour = Math.floor(time / 60);
-    const minute = time % 60;
-    const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-    
+
+  // Extrai hora e minuto do início e fim do expediente
+  const [startHour, startMinute] = workingHours.start.split(':').map(Number);
+  const [endHour, endMinute] = workingHours.end.split(':').map(Number);
+
+  // Usa o intervalo definido na agenda, default 15 minutos se não existir
+  const interval = workingHours.interval ?? 15;
+
+  // Cria objetos Date para controlar os horários
+  const startTime = new Date(`${date}T${workingHours.start}:00`);
+  const endTime = new Date(`${date}T${workingHours.end}:00`);
+
+  let current = new Date(startTime);
+
+  // Loop para criar todos os slots até o fim do expediente
+  while (current < endTime) {
+    const time = current.toTimeString().slice(0, 5); // Formato HH:MM
+
+    // Verifica se já existe uma consulta nesse horário para o médico
+    const isTaken = appointments.some(
+      (appt) =>
+        appt.date === date && appt.time === time && appt.doctorId === doctorId
+    );
+
     slots.push({
-      time: timeString,
-      available: !bookedSlots.includes(timeString),
       doctorId,
+      time,
+      available: !isTaken,
     });
+
+    // Incrementa o horário atual pelo intervalo definido
+    current.setMinutes(current.getMinutes() + interval);
   }
-  
+
   return slots;
-};
-
-export const getDayName = (date: string): string => {
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const dayIndex = new Date(date).getDay();
-  return days[dayIndex];
-};
-
-export const formatDate = (date: string): string => {
-  return new Date(date).toLocaleDateString('pt-BR', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-};
-
-export const formatTime = (time: string): string => {
-  return time;
-};
-
-export const getNextBusinessDays = (count: number): string[] => {
-  const days: string[] = [];
-  const today = new Date();
-  
-  for (let i = 1; days.length < count; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    
-    // Skip weekends for simplicity
-    if (date.getDay() !== 0 && date.getDay() !== 6) {
-      days.push(date.toISOString().split('T')[0]);
-    }
-  }
-  
-  return days;
 }
