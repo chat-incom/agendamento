@@ -34,40 +34,42 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     email: '',
   });
 
-  const availableDates = getNextBusinessDays(14);
-  
-  // Filter dates to only show those with available doctors
-  const datesWithAvailableDoctors = availableDates.filter(date => {
-    return getAvailableTimeSlots(date).some(slot => slot.available);
-  });
-  const [showSuccess, setShowSuccess] = useState(false);
+ const getAvailableTimeSlots = (date: string): TimeSlot[] => {
+  if (selectedDoctor) {
+    const dayName = getDayName(date);
+    const workingHours = selectedDoctor.workingHours.find(wh => wh.day === dayName);
+    if (!workingHours) return [];
 
-  const getAvailableTimeSlots = (date: string): TimeSlot[] => {
-    if (selectedDoctor) {
+    return generateTimeSlots(workingHours, date, state.appointments, selectedDoctor.id);
+  } else if (selectedSpecialty) {
+    // Get all doctors with this specialty
+    const doctors = state.doctors.filter(d => d.specialtyId === selectedSpecialty.id);
+    const allSlots: TimeSlot[] = [];
+
+    doctors.forEach(doctor => {
       const dayName = getDayName(date);
-      const workingHours = selectedDoctor.workingHours.find(wh => wh.day === dayName);
-      if (!workingHours) return [];
-      
-      return generateTimeSlots(workingHours, date, state.appointments, selectedDoctor.id);
-    } else if (selectedSpecialty) {
-      // Get all doctors with this specialty
-      const doctors = state.doctors.filter(d => d.specialtyId === selectedSpecialty.id);
-      const allSlots: TimeSlot[] = [];
-      
-      doctors.forEach(doctor => {
-        const dayName = getDayName(date);
-        const workingHours = doctor.workingHours.find(wh => wh.day === dayName);
-        if (workingHours) {
-          const slots = generateTimeSlots(workingHours, date, state.appointments, doctor.id);
-          allSlots.push(...slots);
-        }
-      });
-      
-      return allSlots.sort((a, b) => a.time.localeCompare(b.time));
-    }
-    
-    return [];
-  };
+      const workingHours = doctor.workingHours.find(wh => wh.day === dayName);
+      if (workingHours) {
+        const slots = generateTimeSlots(workingHours, date, state.appointments, doctor.id);
+        allSlots.push(...slots);
+      }
+    });
+
+    return allSlots.sort((a, b) => a.time.localeCompare(b.time));
+  }
+
+  return [];
+};
+
+const availableDates = getNextBusinessDays(14);
+
+// Agora a função já foi declarada antes do uso
+const datesWithAvailableDoctors = availableDates.filter(date => {
+  return getAvailableTimeSlots(date).some(slot => slot.available);
+});
+
+const [showSuccess, setShowSuccess] = useState(false);
+
 
   const getDoctorForTimeSlot = (time: string): Doctor | null => {
     if (selectedDoctor) return selectedDoctor;
