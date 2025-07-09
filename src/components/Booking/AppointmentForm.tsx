@@ -71,25 +71,33 @@ const datesWithAvailableDoctors = availableDates.filter(date => {
 const [showSuccess, setShowSuccess] = useState(false);
 
 
-  const getDoctorForTimeSlot = (time: string): Doctor | null => {
-    if (selectedDoctor) return selectedDoctor;
-    
-    if (selectedSpecialty && selectedDate) {
-      const doctors = state.doctors.filter(d => d.specialtyId === selectedSpecialty.id);
-      
-      for (const doctor of doctors) {
-        const dayName = getDayName(selectedDate);
-        const workingHours = doctor.workingHours.find(wh => wh.day === dayName);
-        if (workingHours) {
-          const slots = generateTimeSlots(workingHours, selectedDate, state.appointments, doctor.id);
-          const availableSlot = slots.find(s => s.time === time && s.available);
-          if (availableSlot) return doctor;
-        }
+ const getDoctorForTimeSlot = (time: string): Doctor | null => {
+  if (selectedDoctor) return selectedDoctor;
+
+  if (selectedSpecialty && selectedDate) {
+    const doctors = state.doctors?.filter((doctor) => {
+      return doctor.specialtyId === selectedSpecialty.id;
+    }) ?? [];
+
+    for (const doctor of doctors) {
+      const dayName = getDayName(selectedDate);
+      const workingHours = doctor.workingHours.find((wh) => wh.day === dayName);
+      if (workingHours) {
+        const slots = generateTimeSlots(
+          workingHours,
+          selectedDate,
+          state.appointments,
+          doctor.id
+        );
+        const availableSlot = slots.find((s) => s.time === time && s.available);
+        if (availableSlot) return doctor;
       }
     }
-    
-    return null;
-  };
+  }
+
+  return null;
+};
+
 
   const getAvailableInsurances = (): string[] => {
     const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
