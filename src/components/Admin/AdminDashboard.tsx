@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { LogOut, Plus, Users, Calendar, Shield, Activity } from 'lucide-react';
 import ConnectionStatus from '../ConnectionStatus';
+import SystemStatus from '../SystemStatus';
 import SpecialtyManagement from './SpecialtyManagement';
 import DoctorManagement from './DoctorManagement';
 import InsuranceManagement from './InsuranceManagement';
@@ -16,6 +17,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const tabs = [
+    { id: 'status', label: 'Status', icon: Activity, count: 0 },
     { id: 'specialties', label: 'Especialidades', icon: Activity, count: state.specialties.length },
     { id: 'doctors', label: 'Médicos', icon: Users, count: state.doctors.length },
     { id: 'insurances', label: 'Convênios', icon: Shield, count: state.insurances.length },
@@ -84,6 +86,7 @@ const AdminDashboard: React.FC = () => {
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab === 'status' && <SystemStatus />}
         {activeTab === 'specialties' && <SpecialtyManagement />}
         {activeTab === 'doctors' && <DoctorManagement />}
         {activeTab === 'insurances' && <InsuranceManagement />}

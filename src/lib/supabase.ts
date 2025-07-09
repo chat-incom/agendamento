@@ -21,9 +21,34 @@ export const getConnectionStatus = async () => {
   }
   
   try {
-    const { data, error } = await supabase!.from('especialidades').select('count').limit(1);
-    return { connected: !error, error: error?.message };
+    // Test connection with a simple query
+    const { error } = await supabase!.from('especialidades').select('id').limit(1);
+    if (error) {
+      return { connected: false, error: error.message };
+    }
+    return { connected: true };
   } catch (err) {
-    return { connected: false, error: 'Erro de conexão' };
+    return { connected: false, error: err instanceof Error ? err.message : 'Erro desconhecido' };
   }
+};
+
+// Test database tables
+export const testDatabaseTables = async () => {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase não configurado');
+  }
+
+  const tables = ['especialidades', 'medicos', 'convenios', 'agendamentos', 'usuarios', 'agenda', 'medico_convenios'];
+  const results: { [key: string]: boolean } = {};
+
+  for (const table of tables) {
+    try {
+      const { error } = await supabase!.from(table).select('*').limit(1);
+      results[table] = !error;
+    } catch {
+      results[table] = false;
+    }
+  }
+
+  return results;
 };

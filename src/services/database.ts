@@ -4,8 +4,41 @@ import { Doctor, Specialty, Insurance, Appointment } from '../types';
 // Check if Supabase is configured before making requests
 const checkSupabase = () => {
   if (!isSupabaseConfigured() || !supabase) {
-    throw new Error('Supabase não configurado. Clique em "Connect to Supabase" no topo da página.');
+    throw new Error('Supabase não configurado');
   }
+};
+
+// Test all database operations
+export const testDatabaseOperations = async () => {
+  const results = {
+    specialties: { read: false, write: false },
+    doctors: { read: false, write: false },
+    insurances: { read: false, write: false },
+    appointments: { read: false, write: false }
+  };
+
+  try {
+    // Test specialties
+    await getSpecialties();
+    results.specialties.read = true;
+    
+    // Test doctors
+    await getDoctors();
+    results.doctors.read = true;
+    
+    // Test insurances
+    await getInsurances();
+    results.insurances.read = true;
+    
+    // Test appointments
+    await getAppointments();
+    results.appointments.read = true;
+    
+  } catch (error) {
+    console.warn('Database test failed:', error);
+  }
+
+  return results;
 };
 
 // Specialties
