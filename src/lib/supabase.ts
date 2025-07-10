@@ -74,11 +74,12 @@ export async function inserirAgendamento(usuario_id, medico_id, data, horario, c
   if (!validarUUID(medico_id)) throw new Error('ID de médico inválido');
   if (convenio_id && !validarUUID(convenio_id)) throw new Error('ID de convênio inválido');
 
-  const { data, error } = await supabase
+  const { data: result, error } = await supabase
     .from('agendamentos')
     .insert([{ usuario_id, medico_id, data, horario, convenio_id }]);
+
   if (error) throw error;
-  return data[0];
+  return result[0];
 }
 
 // -------- READ --------
@@ -249,3 +250,4 @@ export async function deletarAgendamento(id) {
   if (error) throw error;
   return true;
 }
+
