@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Doctor, Specialty, Insurance, Appointment } from '../types';
+import { Doctor, Specialty, Insurance, Appointment, WorkingHours, Patient } from '../types/index';
+
 
 // Check if Supabase is configured before making requests
 const checkSupabase = () => {
