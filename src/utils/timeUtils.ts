@@ -1,5 +1,5 @@
-
 import { WorkingHours, Appointment, TimeSlot } from '../types/index';
+import { format } from 'date-fns';
 
 export function generateTimeSlots(
   workingHours: WorkingHours,
@@ -58,23 +58,22 @@ export function formatTime(timeString: string): string {
 
 export function getDayName(dateString: string): string {
   const date = new Date(dateString);
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const days = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
   return days[date.getDay()];
 }
 
 export function getNextBusinessDays(count: number): string[] {
   const dates: string[] = [];
   const today = new Date();
-  
+
   for (let i = 1; dates.length < count; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
-    
-    // Skip weekends
+
     if (date.getDay() !== 0 && date.getDay() !== 6) {
       dates.push(date.toISOString().split('T')[0]);
     }
   }
-  
+
   return dates;
 }
