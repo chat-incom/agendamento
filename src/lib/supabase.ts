@@ -1,88 +1,78 @@
-import { supabase } from './supabaseClient'; // ajuste o caminho conforme seu projeto
+import { supabase } from './supabaseClient';
 
 // Validação simples de UUID
-function validarUUID(id) {
+function validarUUID(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
-// Pega usuário autenticado
-async function getUser() {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) throw new Error('Usuário não autenticado');
-  return user;
+// Obtem o usuário autenticado
+export async function getUser() {
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) return null;
+  return data.user;
 }
 
 // -------- INSERT --------
 
-export async function inserirEspecialidade(nome) {
+export async function inserirEspecialidade(nome: string) {
   const user = await getUser();
-  const { data, error } = await supabase
-    .from('especialidades')
-    .insert([{ nome, criado_por: user.id }]);
+  const { data, error } = await supabase.from('especialidades').insert([{ nome, criado_por: user?.id }]).select().single();
   if (error) throw error;
-  return data[0];
+  return data;
 }
 
-export async function inserirConvenio(nome) {
+export async function inserirConvenio(nome: string) {
   const user = await getUser();
-  const { data, error } = await supabase
-    .from('convenios')
-    .insert([{ nome, criado_por: user.id }]);
+  const { data, error } = await supabase.from('convenios').insert([{ nome, criado_por: user?.id }]).select().single();
   if (error) throw error;
-  return data[0];
+  return data;
 }
 
-export async function inserirMedico(nome, crm, especialidade_id) {
-  const user = await getUser();
+export async function inserirMedico(nome: string, crm: string, especialidade_id: string) {
   if (!validarUUID(especialidade_id)) throw new Error('ID de especialidade inválido');
+  const user = await getUser();
   const { data, error } = await supabase
     .from('medicos')
-    .insert([{ nome, crm, especialidade_id, criado_por: user.id }]);
+    .insert([{ nome, crm, especialidade_id, criado_por: user?.id }])
+    .select()
+    .single();
   if (error) throw error;
-  return data[0];
+  return data;
 }
 
-export async function inserirMedicoConvenio(medico_id, convenio_id) {
-  if (!validarUUID(medico_id)) throw new Error('ID de médico inválido');
-  if (!validarUUID(convenio_id)) throw new Error('ID de convênio inválido');
-  const { data, error } = await supabase
-    .from('medico_convenios')
-    .insert([{ medico_id, convenio_id }]);
+export async function inserirMedicoConvenio(medico_id: string, convenio_id: string) {
+  if (!validarUUID(medico_id) || !validarUUID(convenio_id)) throw new Error('ID inválido');
+  const { data, error } = await supabase.from('medico_convenios').insert([{ medico_id, convenio_id }]).select().single();
   if (error) throw error;
-  return data[0];
+  return data;
 }
 
-export async function inserirAgenda(medico_id, dia_semana, horario_inicio, horario_fim) {
+export async function inserirAgenda(medico_id: string, dia: string, horario_inicio: string, horario_fim: string) {
   if (!validarUUID(medico_id)) throw new Error('ID de médico inválido');
   const { data, error } = await supabase
     .from('agenda')
-    .insert([{ medico_id, dia_semana, horario_inicio, horario_fim }]);
+    .insert([{ medico_id, dia, horario_inicio, horario_fim }])
+    .select()
+    .single();
   if (error) throw error;
-  return data[0];
+  return data;
 }
 
-export async function inserirUsuario(nome, data_nascimento, cidade, contato) {
-  const { data, error } = await supabase
-    .from('usuarios')
-    .insert([{ nome, data_nascimento, cidade, contato }]);
-  if (error) throw error;
-  return data[0];
-}
+export async function inserirAgendamento(usuario_id: string, medico_id: string, data: string, horario: string, convenio_id?: string) {
+  if (!validarUUID(usuario_id) || !validarUUID(medico_id)) throw new Error('ID inválido');
+  if (convenio_id && !validarUUID(convenio_id)) throw new Error('Convênio inválido');
 
-export async function inserirAgendamento(usuario_id, medico_id, data, horario, convenio_id) {
-  if (!validarUUID(usuario_id)) throw new Error('ID de usuário inválido');
-  if (!validarUUID(medico_id)) throw new Error('ID de médico inválido');
-  if (convenio_id && !validarUUID(convenio_id)) throw new Error('ID de convênio inválido');
-
-  const { data: result, error } = await supabase
+  const { data: inserted, error } = await supabase
     .from('agendamentos')
-    .insert([{ usuario_id, medico_id, data, horario, convenio_id }]);
+    .insert([{ usuario_id, medico_id, data, horario, convenio_id }])
+    .select()
+    .single();
 
   if (error) throw error;
-  return result[0];
+  return inserted;
 }
 
-// -------- READ --------
+// -------- SELECT --------
 
 export async function listarEspecialidades() {
   const { data, error } = await supabase.from('especialidades').select('*');
@@ -102,152 +92,69 @@ export async function listarMedicos() {
   return data;
 }
 
-export async function listarMedicoConvenios(medico_id) {
-  if (!validarUUID(medico_id)) throw new Error('ID de médico inválido');
-  const { data, error } = await supabase
-    .from('medico_convenios')
-    .select('*')
-    .eq('medico_id', medico_id);
+export async function listarMedicoConvenios() {
+  const { data, error } = await supabase.from('medico_convenios').select('*');
   if (error) throw error;
   return data;
 }
 
-export async function listarAgenda(medico_id) {
-  if (!validarUUID(medico_id)) throw new Error('ID de médico inválido');
-  const { data, error } = await supabase
-    .from('agenda')
-    .select('*')
-    .eq('medico_id', medico_id);
+export async function listarHorarios() {
+  const { data, error } = await supabase.from('agenda').select('*');
   if (error) throw error;
   return data;
 }
 
-export async function listarUsuarios() {
-  const { data, error } = await supabase.from('usuarios').select('*');
-  if (error) throw error;
-  return data;
-}
-
-export async function listarAgendamentos(usuario_id) {
+export async function listarAgendamentos(usuario_id: string) {
   if (!validarUUID(usuario_id)) throw new Error('ID de usuário inválido');
-  const { data, error } = await supabase
-    .from('agendamentos')
-    .select('*')
-    .eq('usuario_id', usuario_id);
+  const { data, error } = await supabase.from('agendamentos').select('*').eq('usuario_id', usuario_id);
   if (error) throw error;
   return data;
 }
 
 // -------- UPDATE --------
 
-export async function atualizarEspecialidade(id, novoNome) {
+export async function atualizarMedico(id: string, fields: Partial<{ nome: string; crm: string; especialidade_id: string }>) {
   if (!validarUUID(id)) throw new Error('ID inválido');
-  const { data, error } = await supabase
-    .from('especialidades')
-    .update({ nome: novoNome })
-    .eq('id', id);
+  const { data, error } = await supabase.from('medicos').update(fields).eq('id', id).select().single();
   if (error) throw error;
-  return data[0];
+  return data;
 }
 
-export async function atualizarConvenio(id, novoNome) {
+export async function atualizarEspecialidade(id: string, nome: string) {
   if (!validarUUID(id)) throw new Error('ID inválido');
-  const { data, error } = await supabase
-    .from('convenios')
-    .update({ nome: novoNome })
-    .eq('id', id);
+  const { data, error } = await supabase.from('especialidades').update({ nome }).eq('id', id).select().single();
   if (error) throw error;
-  return data[0];
+  return data;
 }
 
-export async function atualizarMedico(id, dados) {
+export async function atualizarConvenio(id: string, nome: string) {
   if (!validarUUID(id)) throw new Error('ID inválido');
-  const { data, error } = await supabase
-    .from('medicos')
-    .update(dados)
-    .eq('id', id);
+  const { data, error } = await supabase.from('convenios').update({ nome }).eq('id', id).select().single();
   if (error) throw error;
-  return data[0];
-}
-
-export async function atualizarAgenda(id, dados) {
-  if (!validarUUID(id)) throw new Error('ID inválido');
-  const { data, error } = await supabase
-    .from('agenda')
-    .update(dados)
-    .eq('id', id);
-  if (error) throw error;
-  return data[0];
-}
-
-export async function atualizarUsuario(id, dados) {
-  if (!validarUUID(id)) throw new Error('ID inválido');
-  const { data, error } = await supabase
-    .from('usuarios')
-    .update(dados)
-    .eq('id', id);
-  if (error) throw error;
-  return data[0];
-}
-
-export async function atualizarAgendamento(id, dados) {
-  if (!validarUUID(id)) throw new Error('ID inválido');
-  const { data, error } = await supabase
-    .from('agendamentos')
-    .update(dados)
-    .eq('id', id);
-  if (error) throw error;
-  return data[0];
+  return data;
 }
 
 // -------- DELETE --------
 
-export async function deletarEspecialidade(id) {
-  if (!validarUUID(id)) throw new Error('ID inválido');
-  const { error } = await supabase.from('especialidades').delete().eq('id', id);
-  if (error) throw error;
-  return true;
-}
-
-export async function deletarConvenio(id) {
-  if (!validarUUID(id)) throw new Error('ID inválido');
-  const { error } = await supabase.from('convenios').delete().eq('id', id);
-  if (error) throw error;
-  return true;
-}
-
-export async function deletarMedico(id) {
+export async function deletarMedico(id: string) {
   if (!validarUUID(id)) throw new Error('ID inválido');
   const { error } = await supabase.from('medicos').delete().eq('id', id);
   if (error) throw error;
   return true;
 }
 
-export async function deletarMedicoConvenio(id) {
+export async function deletarEspecialidade(id: string) {
   if (!validarUUID(id)) throw new Error('ID inválido');
-  const { error } = await supabase.from('medico_convenios').delete().eq('id', id);
+  const { error } = await supabase.from('especialidades').delete().eq('id', id);
   if (error) throw error;
   return true;
 }
 
-export async function deletarAgenda(id) {
+export async function deletarConvenio(id: string) {
   if (!validarUUID(id)) throw new Error('ID inválido');
-  const { error } = await supabase.from('agenda').delete().eq('id', id);
+  const { error } = await supabase.from('convenios').delete().eq('id', id);
   if (error) throw error;
   return true;
 }
 
-export async function deletarUsuario(id) {
-  if (!validarUUID(id)) throw new Error('ID inválido');
-  const { error } = await supabase.from('usuarios').delete().eq('id', id);
-  if (error) throw error;
-  return true;
-}
-
-export async function deletarAgendamento(id) {
-  if (!validarUUID(id)) throw new Error('ID inválido');
-  const { error } = await supabase.from('agendamentos').delete().eq('id', id);
-  if (error) throw error;
-  return true;
-}
 
