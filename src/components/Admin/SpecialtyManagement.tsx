@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Plus, Edit, Trash2, Activity } from 'lucide-react';
-import { Specialty } from '../../types';
+import { Specialty } from '../../types/index';
 
 const SpecialtyManagement: React.FC = () => {
   const { state, dispatch } = useApp();
