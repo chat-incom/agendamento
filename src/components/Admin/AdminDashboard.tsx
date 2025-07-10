@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { LogOut, Users, Calendar, Shield, Activity } from 'lucide-react';
-import ConnectionStatus from '../ConnectionStatus';
-import SystemStatus from '../SystemStatus';
+
 import SpecialtyManagement from './SpecialtyManagement';
 import DoctorManagement from './DoctorManagement';
 import InsuranceManagement from './InsuranceManagement';
@@ -10,14 +9,13 @@ import AppointmentManagement from './AppointmentManagement';
 
 const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useApp();
-  const [activeTab, setActiveTab] = useState<'status' | 'specialties' | 'doctors' | 'insurances' | 'appointments'>('status');
+  const [activeTab, setActiveTab] = useState<'specialties' | 'doctors' | 'insurances' | 'appointments'>('specialties');
 
   const handleLogout = () => {
     dispatch({ type: 'LOGOUT' });
   };
 
   const tabs = [
-    { id: 'status', label: 'Status', icon: Activity, count: 0 },
     { id: 'specialties', label: 'Especialidades', icon: Activity, count: state.specialties.length },
     { id: 'doctors', label: 'Médicos', icon: Users, count: state.doctors.length },
     { id: 'insurances', label: 'Convênios', icon: Shield, count: state.insurances.length },
@@ -36,7 +34,6 @@ const AdminDashboard: React.FC = () => {
               <h1 className="text-xl font-bold text-gray-800">Painel Administrativo</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <ConnectionStatus />
               <button
                 onClick={() => dispatch({ type: 'SET_VIEW', payload: 'booking' })}
                 className="text-gray-600 hover:text-blue-600 transition-colors"
@@ -83,7 +80,6 @@ const AdminDashboard: React.FC = () => {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'status' && <SystemStatus />}
         {activeTab === 'specialties' && <SpecialtyManagement />}
         {activeTab === 'doctors' && <DoctorManagement />}
         {activeTab === 'insurances' && <InsuranceManagement />}
