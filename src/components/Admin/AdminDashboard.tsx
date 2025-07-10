@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { LogOut, Plus, Users, Calendar, Shield, Activity } from 'lucide-react';
-import ConnectionStatus from '../ConnectionStatus';
-import SystemStatus from '../SystemStatus';
+
 import SpecialtyManagement from './SpecialtyManagement';
 import DoctorManagement from './DoctorManagement';
 import InsuranceManagement from './InsuranceManagement';
