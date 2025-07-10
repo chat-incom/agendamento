@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { User, Shield, Clock, Search, Filter } from 'lucide-react';
-import { Doctor } from '../../types';
+import { Doctor } from '../../types/index';
+import { supabase } from '../lib/supabase';
 
 interface DoctorSelectionProps {
   onDoctorSelect: (doctor: Doctor) => void;
