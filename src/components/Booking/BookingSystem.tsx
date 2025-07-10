@@ -4,7 +4,7 @@ import { ArrowLeft, Calendar, User, Activity, Shield } from 'lucide-react';
 import DoctorSelection from './DoctorSelection';
 import SpecialtySelection from './SpecialtySelection';
 import AppointmentForm from './AppointmentForm';
-import { Doctor, Specialty } from '../../types';
+import { Doctor, Specialty } from '../../types/index';
 
 export type BookingStep = 'selection' | 'doctor' | 'specialty' | 'appointment';
 
