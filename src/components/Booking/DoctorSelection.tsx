@@ -11,19 +11,15 @@ interface DoctorSelectionProps {
 
 const DoctorSelection: React.FC<DoctorSelectionProps> = ({ onDoctorSelect, onBack }) => {
   const { state } = useApp();
-
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
+  const [selectedSpecialty, setSelectedSpecialty] = useState('');
 
-  const filteredDoctors = state.doctors?.filter((doctor) => {
-    const matchesSearch =
-      doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doctor.crm.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesSpecialty = !selectedSpecialty || doctor.specialtyId === selectedSpecialty;
-
+  const filteredDoctors = state.doctors.filter(doctor => {
+    const matchesSearch = doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         doctor.crm.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSpecialty = selectedSpecialty === '' || doctor.specialtyId === selectedSpecialty;
     return matchesSearch && matchesSpecialty;
-  }) || [];
+  });
 
   const getSpecialtyName = (specialtyId: string) => {
     return state.specialties.find(s => s.id === specialtyId)?.name || 'Especialidade não encontrada';
@@ -36,25 +32,22 @@ const DoctorSelection: React.FC<DoctorSelectionProps> = ({ onDoctorSelect, onBac
   };
 
   const getWorkingDaysText = (workingHours: any[]) => {
-    if (!workingHours || workingHours.length === 0) return 'Horários não definidos';
-
-    const dayNames: { [key: string]: string } = {
-      monday: 'Seg',
-      tuesday: 'Ter',
-      wednesday: 'Qua',
-      thursday: 'Qui',
-      friday: 'Sex',
-      saturday: 'Sáb',
-      sunday: 'Dom'
-    };
-
-    const dias = workingHours.map((wh) => {
-      const dia = dayNames[wh.day] || wh.day;
-      const intervalo = wh.tempo_intervalo ? ` (${wh.tempo_intervalo} min)` : '';
-      return `${dia}${intervalo}`;
+    if (workingHours.length === 0) return 'Horários não definidos';
+    
+    const days = workingHours.map(wh => {
+      const dayNames: { [key: string]: string } = {
+        monday: 'Seg',
+        tuesday: 'Ter',
+        wednesday: 'Qua',
+        thursday: 'Qui',
+        friday: 'Sex',
+        saturday: 'Sáb',
+        sunday: 'Dom'
+      };
+      return dayNames[wh.day];
     });
-
-    return dias.join(', ');
+    
+    return days.join(', ');
   };
 
   return (
@@ -80,7 +73,7 @@ const DoctorSelection: React.FC<DoctorSelectionProps> = ({ onDoctorSelect, onBac
           <div className="relative">
             <Filter className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
             <select
-              value={selectedSpecialty ?? ''}
+              value={selectedSpecialty}
               onChange={(e) => setSelectedSpecialty(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
@@ -159,4 +152,3 @@ const DoctorSelection: React.FC<DoctorSelectionProps> = ({ onDoctorSelect, onBac
 };
 
 export default DoctorSelection;
-
