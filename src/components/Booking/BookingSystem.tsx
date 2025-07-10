@@ -129,20 +129,28 @@ const BookingSystem: React.FC = () => {
             </div>
           </div>
         );
-      case 'doctor':
-        return (
-          <DoctorSelection
-            onDoctorSelect={handleDoctorSelect}
-            onBack={handleBack}
-          />
-        );
-      case 'specialty':
-        return (
-          <SpecialtySelection
-            onSpecialtySelect={handleSpecialtySelect}
-            onBack={handleBack}
-          />
-        );
+     case 'doctor':
+  if (!state.doctors || state.doctors.length === 0) {
+    return <p className="text-center">Carregando médicos...</p>;
+  }
+  return (
+    <DoctorSelection
+      onDoctorSelect={handleDoctorSelect}
+      onBack={handleBack}
+    />
+  );
+
+case 'specialty':
+  if (!state.specialties || state.specialties.length === 0) {
+    return <p className="text-center">Carregando especialidades...</p>;
+  }
+  return (
+    <SpecialtySelection
+      onSpecialtySelect={handleSpecialtySelect}
+      onBack={handleBack}
+    />
+  );
+
       case 'appointment':
         return (
           <AppointmentForm
