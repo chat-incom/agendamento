@@ -1,4 +1,4 @@
-import { WorkingHours, Appointment, TimeSlot } from '../types';
+import { WorkingHours, Appointment, TimeSlot } from '../types/index';
 
 export function generateTimeSlots(
   workingHours: WorkingHours,
