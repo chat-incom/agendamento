@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Calendar, Clock, User, Phone, Mail, MapPin, Shield, CheckCircle } from 'lucide-react';
 import { Doctor, Specialty, Patient, Appointment, TimeSlot } from '../../types/index';
 import { generateTimeSlots, getDayName, formatDate, getNextBusinessDays } from '../../utils/timeUtils';
-import { supabase } from '../../utils/supabaseClient';
+import { ... } from '../lib/supabase';
 
 interface AppointmentFormProps {
   selectedDoctor: Doctor | null;
