@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { Doctor, Specialty, Insurance, Appointment } from '../types/index';
-import * as supabaseLib from '../supabase'; // Ajustado para o novo caminho
+import { supabase } from '../lib/supabase';
 
 interface AppState {
   specialties: Specialty[];
