@@ -13,12 +13,15 @@ const DoctorSelection: React.FC<DoctorSelectionProps> = ({ onDoctorSelect, onBac
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
 
-  const filteredDoctors = state.doctors.filter(doctor => {
-    const matchesSearch = doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         doctor.crm.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSpecialty = selectedSpecialty === '' || doctor.specialtyId === selectedSpecialty;
-    return matchesSearch && matchesSpecialty;
-  });
+ const filteredDoctors = (state.doctors || []).filter((doctor) => {
+  const matchesSearch = doctor?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        doctor?.crm?.toLowerCase().includes(searchTerm.toLowerCase());
+
+  const matchesSpecialty = !selectedSpecialty || doctor?.specialtyId === selectedSpecialty;
+
+  return matchesSearch && matchesSpecialty;
+});
+
 
   const getSpecialtyName = (specialtyId: string) => {
     return state.specialties.find(s => s.id === specialtyId)?.name || 'Especialidade não encontrada';
