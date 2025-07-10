@@ -8,234 +8,196 @@ import { Doctor, Specialty } from '../../types/index';
 
 export type BookingStep = 'selection' | 'doctor' | 'specialty' | 'appointment';
 
-interface AppState {
-  specialties: Specialty[];
-  doctors: Doctor[];
-  insurances: Insurance[];
-  appointments: Appointment[];
-  isLoggedIn: boolean;
-  currentView: 'login' | 'admin' | 'booking';
-  isLoading: boolean;
-}
+const BookingSystem: React.FC = () => {
+  const { state, dispatch } = useApp();
+  const [currentStep, setCurrentStep] = useState<BookingStep>('selection');
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [selectedSpecialty, setSelectedSpecialty] = useState<Specialty | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
 
-type AppAction = 
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'LOAD_DATA'; payload: { specialties: Specialty[]; doctors: Doctor[]; insurances: Insurance[]; appointments: Appointment[] } }
-  | { type: 'SET_VIEW'; payload: 'login' | 'admin' | 'booking' }
-  | { type: 'LOGIN'; payload?: string }
-  | { type: 'LOGOUT' }
-  | { type: 'ADD_SPECIALTY'; payload: Specialty }
-  | { type: 'ADD_DOCTOR'; payload: Doctor }
-  | { type: 'ADD_INSURANCE'; payload: Insurance }
-  | { type: 'ADD_APPOINTMENT'; payload: Appointment }
-  | { type: 'UPDATE_DOCTOR'; payload: Doctor }
-  | { type: 'UPDATE_SPECIALTY'; payload: Specialty }
-  | { type: 'UPDATE_INSURANCE'; payload: Insurance }
-  | { type: 'DELETE_DOCTOR'; payload: string }
-  | { type: 'DELETE_SPECIALTY'; payload: string }
-  | { type: 'DELETE_INSURANCE'; payload: string };
+  const handleStepChange = (step: BookingStep) => {
+    setCurrentStep(step);
+  };
 
-const initialState: AppState = {
-  specialties: [],
-  doctors: [],
-  insurances: [],
-  appointments: [],
-  isLoggedIn: false,
-  currentView: 'login',
-  isLoading: false,
-};
+  const handleDoctorSelect = (doctor: Doctor) => {
+    setSelectedDoctor(doctor);
+    setCurrentStep('appointment');
+  };
 
-const appReducer = (state: AppState, action: AppAction): AppState => {
-  switch (action.type) {
-    case 'SET_LOADING':
-      return { ...state, isLoading: action.payload };
-    case 'LOAD_DATA':
-      return { ...state, ...action.payload, isLoading: false };
-    case 'SET_VIEW':
-      return { ...state, currentView: action.payload };
-    case 'LOGIN':
-      return { ...state, isLoggedIn: true, currentView: 'admin' };
-    case 'LOGOUT':
-      return { ...state, isLoggedIn: false, currentView: 'login' };
-    case 'ADD_SPECIALTY':
-      supabaseLib.inserirEspecialidade(action.payload.name).catch(err => {
-        console.warn('Failed to save specialty:', err.message);
-      });
-      return { ...state, specialties: [...state.specialties, action.payload] };
-    case 'ADD_DOCTOR':
-      supabaseLib.inserirMedico(action.payload.name, action.payload.crm, action.payload.specialtyId).catch(err => {
-        console.warn('Failed to save doctor:', err.message);
-      });
-      return { ...state, doctors: [...state.doctors, action.payload] };
-    case 'ADD_INSURANCE':
-      supabaseLib.inserirConvenio(action.payload.name).catch(err => {
-        console.warn('Failed to save insurance:', err.message);
-      });
-      return { ...state, insurances: [...state.insurances, action.payload] };
-    case 'ADD_APPOINTMENT':
-      supabaseLib.inserirAgendamento(
-        '', // Placeholder para usuario_id, deve ser obtido dinamicamente
-        action.payload.doctorId,
-        action.payload.date,
-        action.payload.time,
-        action.payload.insuranceId
-      ).catch(err => {
-        console.warn('Failed to save appointment:', err.message);
-      });
-      return { ...state, appointments: [...state.appointments, action.payload] };
-    case 'UPDATE_DOCTOR':
-      supabaseLib.atualizarMedico(action.payload.id, {
-        nome: action.payload.name,
-        crm: action.payload.crm,
-        especialidade_id: action.payload.specialtyId,
-      }).catch(err => {
-        console.warn('Failed to update doctor:', err.message);
-      });
-      return {
-        ...state,
-        doctors: state.doctors.map(doctor =>
-          doctor.id === action.payload.id ? action.payload : doctor
-        ),
-      };
-    case 'UPDATE_SPECIALTY':
-      supabaseLib.atualizarEspecialidade(action.payload.id, action.payload.name).catch(err => {
-        console.warn('Failed to update specialty:', err.message);
-      });
-      return {
-        ...state,
-        specialties: state.specialties.map(specialty =>
-          specialty.id === action.payload.id ? action.payload : specialty
-        ),
-      };
-    case 'UPDATE_INSURANCE':
-      supabaseLib.atualizarConvenio(action.payload.id, action.payload.name).catch(err => {
-        console.warn('Failed to update insurance:', err.message);
-      });
-      return {
-        ...state,
-        insurances: state.insurances.map(insurance =>
-          insurance.id === action.payload.id ? action.payload : insurance
-        ),
-      };
-    case 'DELETE_DOCTOR':
-      supabaseLib.deletarMedico(action.payload).catch(err => {
-        console.warn('Failed to delete doctor:', err.message);
-      });
-      return {
-        ...state,
-        doctors: state.doctors.filter(doctor => doctor.id !== action.payload),
-      };
-    case 'DELETE_SPECIALTY':
-      supabaseLib.deletarEspecialidade(action.payload).catch(err => {
-        console.warn('Failed to delete specialty:', err.message);
-      });
-      return {
-        ...state,
-        specialties: state.specialties.filter(specialty => specialty.id !== action.payload),
-      };
-    case 'DELETE_INSURANCE':
-      supabaseLib.deletarConvenio(action.payload).catch(err => {
-        console.warn('Failed to delete insurance:', err.message);
-      });
-      return {
-        ...state,
-        insurances: state.insurances.filter(insurance => insurance.id !== action.payload),
-      };
-    default:
-      return state;
-  }
-};
+  const handleSpecialtySelect = (specialty: Specialty) => {
+    setSelectedSpecialty(specialty);
+    setCurrentStep('appointment');
+  };
 
-const AppContext = createContext<{
-  state: AppState;
-  dispatch: React.Dispatch<AppAction>;
-}>({
-  state: initialState,
-  dispatch: () => {},
-});
+  const handleBack = () => {
+    switch (currentStep) {
+      case 'doctor':
+      case 'specialty':
+        setCurrentStep('selection');
+        break;
+      case 'appointment':
+        setCurrentStep(selectedDoctor ? 'doctor' : 'specialty');
+        break;
+      default:
+        setCurrentStep('selection');
+    }
+  };
 
-export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(appReducer, initialState);
+  const handleBackToLogin = () => {
+    dispatch({ type: 'SET_VIEW', payload: 'login' });
+  };
 
-  useEffect(() => {
-    const loadData = async () => {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      console.log('Iniciando carregamento de dados do Supabase às 10:00 PM -03, 09/07/2025...');
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 'selection':
+        return (
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <div className="bg-blue-600 p-4 rounded-full mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+                <Calendar className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="text-4xl font-bold text-gray-800 mb-4">Agendar Consulta</h1>
+              <p className="text-xl text-gray-600">Como você gostaria de agendar sua consulta?</p>
+            </div>
 
-      try {
-        const [specialties, insurances, doctors, appointments] = await Promise.all([
-          supabaseLib.listarEspecialidades(),
-          supabaseLib.listarConvenios(),
-          supabaseLib.listarMedicos(),
-          supabaseLib.listarAgendamentos(''), // Ajuste para um ID de usuário válido ou remova
-        ]);
+            <div className="grid md:grid-cols-2 gap-8 mb-12">
+              <div
+                onClick={() => handleStepChange('doctor')}
+                className="bg-white rounded-2xl shadow-lg p-8 cursor-pointer hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-transparent hover:border-blue-500"
+              >
+                <div className="text-center">
+                  <div className="bg-blue-100 p-4 rounded-full mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+                    <User className="w-8 h-8 text-blue-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4">Por Médico</h3>
+                  <p className="text-gray-600 mb-6">
+                    Escolha diretamente o médico de sua preferência e veja os horários disponíveis
+                  </p>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                      ✓ Veja os convênios aceitos<br />
+                      ✓ Horários personalizados<br />
+                      ✓ Especialidade do médico
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-        console.log('Dados carregados com sucesso:', { specialties, insurances, doctors, appointments });
-        dispatch({
-          type: 'LOAD_DATA',
-          payload: {
-            specialties: specialties.map(s => ({
-              id: s.id,
-              name: s.nome,
-              description: s.nome, // Ajuste se houver campo de descrição
-              createdAt: new Date(),
-            })),
-            insurances: insurances.map(i => ({
-              id: i.id,
-              name: i.nome,
-              type: 'private', // Ajuste se o tipo estiver no banco
-            })),
-            doctors: doctors.map(d => ({
-              id: d.id,
-              name: d.nome,
-              crm: d.crm,
-              specialtyId: d.especialidade_id,
-              insurances: [], // Ajuste para buscar medico_convenios
-              workingHours: [], // Ajuste para buscar agenda
-              createdAt: new Date(),
-            })),
-            appointments: appointments.map(a => ({
-              id: a.id,
-              doctorId: a.medico_id,
-              date: a.data,
-              time: a.horario,
-              patient: { name: '', birthDate: '', city: '', phone: '', email: '' }, // Ajuste para mapear usuarios
-              insuranceId: a.convenio_id,
-              status: 'scheduled',
-              createdAt: new Date(),
-            })),
-          }
-        });
-      } catch (error) {
-        console.error('Erro ao carregar dados do Supabase:', error instanceof Error ? error.message : error);
-        dispatch({
-          type: 'LOAD_DATA',
-          payload: {
-            specialties: initialState.specialties,
-            doctors: initialState.doctors,
-            insurances: initialState.insurances,
-            appointments: initialState.appointments,
-          }
-        });
-      } finally {
-        dispatch({ type: 'SET_LOADING', payload: false });
-      }
-    };
+              <div
+                onClick={() => handleStepChange('specialty')}
+                className="bg-white rounded-2xl shadow-lg p-8 cursor-pointer hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-transparent hover:border-green-500"
+              >
+                <div className="text-center">
+                  <div className="bg-green-100 p-4 rounded-full mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+                    <Activity className="w-8 h-8 text-green-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4">Por Especialidade</h3>
+                  <p className="text-gray-600 mb-6">
+                    Escolha a especialidade e veja todos os horários disponíveis de todos os médicos
+                  </p>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <p className="text-sm text-green-700">
+                      ✓ Mais opções de horários<br />
+                      ✓ Todos os médicos da especialidade<br />
+                      ✓ Comparação de convênios
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-    loadData();
-  }, []);
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <Shield className="w-5 h-5 text-blue-600 mr-2" />
+                Informações importantes
+              </h3>
+              <div className="grid md:grid-cols-3 gap-4 text-sm text-gray-600">
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-1">Agendamento</h4>
+                  <p>Rápido e sem complicações</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-1">Confirmação</h4>
+                  <p>Confirmação imediata por email</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-1">Cancelamento</h4>
+                  <p>Cancele até 24h antes</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 'doctor':
+        return (
+          <DoctorSelection
+            onDoctorSelect={handleDoctorSelect}
+            onBack={handleBack}
+          />
+        );
+      case 'specialty':
+        return (
+          <SpecialtySelection
+            onSpecialtySelect={handleSpecialtySelect}
+            onBack={handleBack}
+          />
+        );
+      case 'appointment':
+        return (
+          <AppointmentForm
+            selectedDoctor={selectedDoctor}
+            selectedSpecialty={selectedSpecialty}
+            selectedDate={selectedDate}
+            selectedTime={selectedTime}
+            onDateSelect={setSelectedDate}
+            onTimeSelect={setSelectedTime}
+            onBack={handleBack}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <AppContext.Provider value={{ state, dispatch }}>
-      {children}
-    </AppContext.Provider>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <div className="bg-blue-600 p-2 rounded-lg mr-3">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-xl font-bold text-gray-800">Agendamento Online</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              {currentStep !== 'selection' && (
+                <button
+                  onClick={handleBack}
+                  className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Voltar</span>
+                </button>
+              )}
+              <button
+                onClick={handleBackToLogin}
+                className="text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                Área Administrativa
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="p-4 sm:p-6 lg:p-8">
+        {renderStepContent()}
+      </main>
+    </div>
   );
 };
 
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
-
+export default BookingSystem;
 
