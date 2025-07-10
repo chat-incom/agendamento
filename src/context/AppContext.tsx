@@ -69,7 +69,11 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     case 'LOAD_DATA':
-      return { ...state, ...action.payload, isLoading: false };
+      return { 
+        ...state, 
+        ...action.payload, 
+        isLoading: false 
+      };
     case 'SET_VIEW':
       return { ...state, currentView: action.payload };
     case 'LOGIN':
@@ -77,7 +81,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'LOGOUT':
       return { ...state, isLoggedIn: false, currentView: 'login' };
     case 'ADD_SPECIALTY':
-      // Try to save to database, but don't block UI
       db.addSpecialty(action.payload).catch(err => {
         console.warn('Failed to save specialty to database:', err.message);
       });
@@ -168,7 +171,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [state, dispatch] = useReducer(appReducer, initialState);
 
   useEffect(() => {
-    // Try to load data from Supabase, but fallback to initial data if it fails
     const loadData = async () => {
       dispatch({ type: 'SET_LOADING', payload: true });
       
@@ -182,10 +184,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         
         dispatch({ 
           type: 'LOAD_DATA', 
-          payload: { specialties, doctors, insurances, appointments } 
+          payload: { 
+            specialties: specialties || initialState.specialties, 
+            doctors: doctors || initialState.doctors, 
+            insurances: insurances || initialState.insurances, 
+            appointments: appointments || initialState.appointments 
+          } 
         });
       } catch (error) {
-        console.warn('Failed to load data from database, using initial data:', error);
+        console.error('Erro ao carregar dados do Supabase:', error);
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     };
