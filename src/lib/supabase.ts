@@ -1,49 +1,83 @@
-import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { createClient } from '@supabase/supabase-js';
 
-export { supabase, isSupabaseConfigured };
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export async function getUser() {
-  if (!supabase) return null;
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
-  return data.user;
+// Check for missing or placeholder values
+const isPlaceholderUrl = !supabaseUrl || 
+  supabaseUrl.includes('ixqjqjqjqjqjqjqj') || 
+  supabaseUrl === 'your-project-url' ||
+  supabaseUrl === 'https://your-project-id.supabase.co';
+
+const isPlaceholderKey = !supabaseAnonKey || 
+  supabaseAnonKey.includes('example_key_here') || 
+  supabaseAnonKey === 'your-anon-key' ||
+  supabaseAnonKey === 'your-anon-key-here';
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Missing Supabase environment variables');
+  console.error('Please check your .env file and ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.');
+  console.error('Current values:');
+  console.error('VITE_SUPABASE_URL:', supabaseUrl || 'undefined');
+  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? '[HIDDEN]' : 'undefined');
 }
 
-export async function getConnectionStatus() {
-  if (!supabase) {
-    return { connected: false, error: 'Supabase não configurado' };
-  }
-  
-  try {
-    const { error } = await supabase.from('especialidades').select('count').limit(1);
-    return { connected: !error };
-  } catch (error) {
-    return { connected: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
-  }
+if (isPlaceholderUrl || isPlaceholderKey) {
+  console.warn('⚠️ Placeholder Supabase credentials detected');
+  console.warn('For production use, please:');
+  console.warn('1. Create a Supabase project at https://supabase.com');
+  console.warn('2. Go to Settings > API in your Supabase dashboard');
+  console.warn('3. Copy your Project URL and anon/public key');
+  console.warn('4. Update your .env file with the real values');
+  console.warn('Current URL:', supabaseUrl);
+  console.warn('Key status:', isPlaceholderKey ? 'Placeholder detected' : 'Appears valid');
 }
 
-// Funções de dados locais para fallback
-const localData = {
-  especialidades: [
-    { id: '1', nome: 'Cardiologia', created_at: new Date().toISOString() },
-    { id: '2', nome: 'Dermatologia', created_at: new Date().toISOString() },
-  ],
-  convenios: [
-    { id: '1', nome: 'Unimed', created_at: new Date().toISOString() },
-    { id: '2', nome: 'Bradesco Saúde', created_at: new Date().toISOString() },
-  ],
-  medicos: [
-    { id: '1', nome: 'Dr. João Silva', crm: '12345', especialidade_id: '1', created_at: new Date().toISOString() },
-  ],
-  agenda: [
-    { id: '1', medico_id: '1', dia: 'monday', horario_inicio: '08:00', horario_fim: '17:00' },
-  ],
-  medico_convenios: [
-    { id: '1', medico_id: '1', convenio_id: '1' },
-  ],
-  agendamentos: [],
-  usuarios: [],
-};
+// Create Supabase client with fallback for development
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    storage: window.localStorage,
+    storageKey: 'cirplane-auth-token',
+    debug: false
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'cirplane-web',
+      'apikey': supabaseAnonKey
+    }
+  },
+  db: {
+    schema: 'public'
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 2
+    }
+  }
+});
+
+// Test connection only if we have valid credentials
+if (supabaseUrl && supabaseAnonKey && !isPlaceholderUrl && !isPlaceholderKey) {
+  supabase.from('user_profiles').select('count', { count: 'exact', head: true })
+    .then(({ error }) => {
+      if (error) {
+        console.error('❌ Database connection test failed:', error.message);
+        console.error('Please verify your Supabase project is active and your credentials are correct.');
+      } else {
+        console.log('✅ Database connection successful');
+      }
+    })
+    .catch((err) => {
+      console.error('❌ Network error connecting to Supabase:', err.message);
+      console.error('Please check your internet connection and Supabase project status.');
+    });
+} else {
+  console.log('⏳ Supabase client created with placeholder credentials - connection test skipped');
+}
+
 
 export async function listarEspecialidades() {
   if (!supabase) return localData.especialidades;
