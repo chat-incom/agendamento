@@ -27,7 +27,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     state: { doctors: [], appointments: [], specialties: [], insurances: [] }, 
     dispatch: () => {} 
   };
-  console.log('State:', state);
+  console.log('State no AppointmentForm:', state);
 
   const [currentStep, setCurrentStep] = useState<'datetime' | 'patient' | 'confirmation'>('datetime');
   const [selectedInsurance, setSelectedInsurance] = useState<string>('');
@@ -42,7 +42,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const [showSuccess, setShowSuccess] = useState(false);
 
   // Exibe carregando se os dados ainda não estiverem prontos
-  if (state.isLoading || !state.doctors || !state.appointments) {
+  if (state.isLoading || !state.doctors.length || !state.appointments.length) {
     return <div className="text-center py-10">Carregando dados...</div>;
   }
 
@@ -69,7 +69,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       }
       return generateTimeSlots(workingHours, date, state.appointments || [], selectedDoctor.id);
     } else if (selectedSpecialty) {
-      const doctors = state.doctors?.filter(d => d.specialtyId === selectedSpecialty.id) || [];
+      const doctors = state.doctors.filter(d => d.specialtyId === selectedSpecialty.id);
       const allSlots: TimeSlot[] = [];
       doctors.forEach(doctor => {
         const dayName = getDayName(date);
@@ -88,7 +88,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     console.log('getDoctorForTimeSlot called with time:', time);
     if (selectedDoctor) return selectedDoctor;
     if (selectedSpecialty && selectedDate) {
-      const doctors = state.doctors?.filter(doctor => doctor.specialtyId === selectedSpecialty.id) || [];
+      const doctors = state.doctors.filter(doctor => doctor.specialtyId === selectedSpecialty.id);
       for (const doctor of doctors) {
         const dayName = getDayName(selectedDate);
         const workingHours = doctor.workingHours.find(wh => wh.day === dayName);
