@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Plus, User, Clock, Shield, Edit, Trash2 } from 'lucide-react';
-import { Doctor, WorkingHours } from '../../types';
+import { Doctor, WorkingHours } from '../../types/index';
 import { supabase } from '../../lib/supabaseClient';
 
 const DoctorManagement: React.FC = () => {
