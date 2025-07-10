@@ -1,6 +1,12 @@
-import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { Doctor, Specialty, Insurance, Appointment } from '../types/index';
-import { supabase } from '../lib/supabase';
+import React, { useState } from 'react';
+import { useApp } from '../../context/AppContext';
+import { ArrowLeft, Calendar, User, Activity, Shield } from 'lucide-react';
+import DoctorSelection from './DoctorSelection';
+import SpecialtySelection from './SpecialtySelection';
+import AppointmentForm from './AppointmentForm';
+import { Doctor, Specialty } from '../../types/index';
+
+export type BookingStep = 'selection' | 'doctor' | 'specialty' | 'appointment';
 
 interface AppState {
   specialties: Specialty[];
