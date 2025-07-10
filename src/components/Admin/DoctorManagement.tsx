@@ -220,7 +220,7 @@ const DoctorManagement: React.FC = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
                   <select
                     value={newWorkingHour.day}
-                    onChange={(e) => setNewWorkingHour({ ...newWorkingHour, day: e.target.value as any })}
+                    onChange={(e) => setNewWorkingHour({ ...newWorkingHour, day: e.target.value as unknown })}
                     className="px-2 py-1 border border-gray-300 rounded text-sm"
                   >
                     {Object.entries(dayLabels).map(([day, label]) => (
