@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { Doctor, Specialty, Insurance, Appointment, WorkingHour } from '../types/index';
+import { Doctor, Specialty, Insurance, Appointment, WorkingHours, Patient } from '../types/index';
 import * as supabaseLib from '../supabase';
 
 interface AppState {
@@ -122,6 +122,19 @@ const AppContext = createContext<{
   dispatch: () => {},
 });
 
+const mapDayFromPortuguese = (day: string): WorkingHours['day'] => {
+  const map: Record<string, WorkingHours['day']> = {
+    'Segunda': 'monday',
+    'Terça': 'tuesday',
+    'Quarta': 'wednesday',
+    'Quinta': 'thursday',
+    'Sexta': 'friday',
+    'Sábado': 'saturday',
+    'Domingo': 'sunday',
+  };
+  return map[day] || 'monday';
+};
+
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
@@ -129,22 +142,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const loadData = async () => {
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
-        const [specialties, insurances, doctors, appointments, horarios, medicoConvenios] = await Promise.all([
+        const [specialties, insurances, doctors, appointments, horarios, medicoConvenios, usuarios] = await Promise.all([
           supabaseLib.listarEspecialidades(),
           supabaseLib.listarConvenios(),
           supabaseLib.listarMedicos(),
-          supabaseLib.listarAgendamentos(''), // ajuste se tiver userId
-          supabaseLib.listarHorarios(),       // nova função: retorna [{ medico_id, dia, inicio, fim }]
-          supabaseLib.listarMedicoConvenios(),// nova função: retorna [{ medico_id, convenio_id }]
+          supabaseLib.listarAgendamentos(''),
+          supabaseLib.listarHorarios(),
+          supabaseLib.listarMedicoConvenios(),
+          supabaseLib.listarUsuarios(),
         ]);
 
         const doctorsWithExtras: Doctor[] = doctors.map(d => {
-          const workingHours = horarios
+          const workingHours: WorkingHours[] = horarios
             .filter(h => h.medico_id === d.id)
             .map(h => ({
-              day: h.dia,
-              startTime: h.inicio,
-              endTime: h.fim,
+              day: mapDayFromPortuguese(h.dia_semana),
+              startTime: h.horario_inicio,
+              endTime: h.horario_fim,
+              intervalMinutes: h.tempo_intervalo,
             }));
 
           const doctorInsurances = medicoConvenios
@@ -162,23 +177,44 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           };
         });
 
+        const fullAppointments: Appointment[] = appointments.map(a => {
+          const usuario = usuarios.find(u => u.id === a.usuario_id);
+          const patient: Patient = usuario
+            ? {
+                name: usuario.nome,
+                birthDate: usuario.data_nascimento,
+                city: usuario.cidade,
+                phone: usuario.contato,
+                email: '', // ajuste conforme for adicionado no banco
+              }
+            : {
+                name: '',
+                birthDate: '',
+                city: '',
+                phone: '',
+                email: '',
+              };
+
+          return {
+            id: a.id,
+            doctorId: a.medico_id,
+            date: a.data,
+            time: a.horario,
+            insuranceId: a.convenio_id,
+            status: 'scheduled',
+            createdAt: new Date(a.criado_em),
+            patient,
+          };
+        });
+
         dispatch({
           type: 'LOAD_DATA',
           payload: {
             specialties: specialties.map(s => ({ id: s.id, name: s.nome, description: s.nome, createdAt: new Date() })),
             insurances: insurances.map(i => ({ id: i.id, name: i.nome, type: 'private' })),
             doctors: doctorsWithExtras,
-            appointments: appointments.map(a => ({
-              id: a.id,
-              doctorId: a.medico_id,
-              date: a.data,
-              time: a.horario,
-              insuranceId: a.convenio_id,
-              status: 'scheduled',
-              createdAt: new Date(),
-              patient: { name: '', birthDate: '', city: '', phone: '', email: '' }, // ajuste conforme o uso real
-            })),
-          }
+            appointments: fullAppointments,
+          },
         });
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
