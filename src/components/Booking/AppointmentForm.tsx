@@ -46,15 +46,22 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   }
 
   useEffect(() => {
-    console.log('useEffect triggered with:', { selectedDoctor, selectedSpecialty, state });
-    const availableDates = getNextBusinessDays(14);
-    const filteredDates = availableDates.filter(date => {
-      const slots = getAvailableTimeSlots(date);
-      console.log('Slots for date', date, ':', slots);
-      return slots.some(slot => slot.available);
-    });
-    setDatesWithAvailableDoctors(filteredDates);
-  }, [selectedDoctor, selectedSpecialty, state.doctors, state.appointments]);
+  console.log('useEffect triggered with:', {
+    selectedDoctor,
+    selectedSpecialty,
+    state,
+  });
+
+  const availableDates = getNextBusinessDays(14);
+  const filteredDates = availableDates.filter((date) => {
+    const slots = getAvailableTimeSlots(date);
+    console.log('Slots for date', date, ':', slots);
+    return slots.some((slot) => slot.available);
+  });
+
+  setDatesWithAvailableDoctors(filteredDates);
+}, [selectedDoctor, selectedSpecialty, state.doctors, state.appointments]);
+
 
   const getAvailableTimeSlots = (date: string): TimeSlot[] => {
     console.log('getAvailableTimeSlots called with date:', date, 'selectedDoctor:', selectedDoctor, 'selectedSpecialty:', selectedSpecialty);
