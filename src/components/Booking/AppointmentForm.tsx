@@ -53,6 +53,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   });
 
  useEffect(() => {
+     const getAvailableTimeSlots = (date: string) => {
+    // lógica baseada em state e selectedDoctor
+  };
   const availableDates = getNextBusinessDays(14);
   const filteredDates = availableDates.filter((date) => {
     const slots = getAvailableTimeSlots(date); // ← esta função está sendo usada
