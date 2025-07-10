@@ -41,12 +41,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const [datesWithAvailableDoctors, setDatesWithAvailableDoctors] = useState<string[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Exibe carregando se os dados ainda não estiverem prontos
   if (state.isLoading || !state.doctors.length || !state.appointments.length) {
     return <div className="text-center py-10">Carregando dados...</div>;
   }
 
-  // Calcula datas disponíveis quando os dados mudarem
   useEffect(() => {
     console.log('useEffect triggered with:', { selectedDoctor, selectedSpecialty, state });
     const availableDates = getNextBusinessDays(14);
@@ -108,23 +106,35 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     return doctor ? doctor.insurances : [];
   };
 
-  const handleConfirmAppointment = () => {
+  const handleConfirmAppointment = async () => {
     const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
     if (!doctor) return;
 
-    const newAppointment: Appointment = {
-      id: Date.now().toString(),
-      doctorId: doctor.id,
-      date: selectedDate,
-      time: selectedTime,
-      patient: patientData,
-      insuranceId: selectedInsurance || undefined,
-      status: 'scheduled',
-      createdAt: new Date(),
-    };
+    try {
+      const userData = await supabaseLib.inserirUsuario(patientData.name, patientData.birthDate, patientData.city, patientData.phone);
+      const newAppointment: Appointment = {
+        id: Date.now().toString(),
+        doctorId: doctor.id,
+        date: selectedDate,
+        time: selectedTime,
+        patient: patientData,
+        insuranceId: selectedInsurance || undefined,
+        status: 'scheduled',
+        createdAt: new Date(),
+      };
 
-    dispatch({ type: 'ADD_APPOINTMENT', payload: newAppointment });
-    setShowSuccess(true);
+      await supabaseLib.inserirAgendamento(
+        userData.id,
+        doctor.id,
+        selectedDate,
+        selectedTime,
+        selectedInsurance
+      );
+      dispatch({ type: 'ADD_APPOINTMENT', payload: newAppointment });
+      setShowSuccess(true);
+    } catch (error) {
+      console.error('Erro ao confirmar agendamento:', error instanceof Error ? error.message : error);
+    }
   };
 
   const handleBackToBooking = () => {
