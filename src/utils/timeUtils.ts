@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { WorkingHours, Appointment, TimeSlot } from '../types/index';
 
 export function generateTimeSlots(
@@ -8,40 +9,32 @@ export function generateTimeSlots(
 ): TimeSlot[] {
   const slots: TimeSlot[] = [];
 
-  // Validações básicas
-  if (!workingHours?.start || !workingHours?.end || !date) {
-    throw new Error('Invalid input: start, end, or date is missing');
+  if (!workingHours?.startTime || !workingHours?.endTime || !date) {
+    return slots;
   }
 
-  const [startHour, startMinute] = workingHours.start.split(':').map(Number);
-  const [endHour, endMinute] = workingHours.end.split(':').map(Number);
+  const [startHour, startMinute] = workingHours.startTime.split(':').map(Number);
+  const [endHour, endMinute] = workingHours.endTime.split(':').map(Number);
 
-  if (
-    isNaN(startHour) || isNaN(startMinute) ||
-    isNaN(endHour) || isNaN(endMinute) ||
-    startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 ||
-    startMinute < 0 || startMinute > 59 || endMinute < 0 || endMinute > 59
-  ) {
-    throw new Error('Invalid time format in workingHours');
+  if (isNaN(startHour) || isNaN(startMinute) || isNaN(endHour) || isNaN(endMinute)) {
+    return slots;
   }
 
-  const interval = Math.max(workingHours.interval ?? 15, 1); // Garante intervalo positivo
-
-  const startTime = new Date(`${date}T${workingHours.start}:00`);
-  const endTime = new Date(`${date}T${workingHours.end}:00`);
+  const interval = workingHours.intervalMinutes || 30;
+  const startTime = new Date(`${date}T${workingHours.startTime}:00`);
+  const endTime = new Date(`${date}T${workingHours.endTime}:00`);
 
   if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-    throw new Error('Invalid date or time construction');
+    return slots;
   }
 
   const current = new Date(startTime);
 
   while (current < endTime) {
-    const time = current.toTimeString().slice(0, 5); // Formato HH:MM
-
-    const isTaken = Array.isArray(appointments) ? appointments.some(
+    const time = current.toTimeString().slice(0, 5);
+    const isTaken = appointments.some(
       (appt) => appt.date === date && appt.time === time && appt.doctorId === doctorId
-    ) : false;
+    );
 
     slots.push({
       doctorId,
@@ -52,15 +45,36 @@ export function generateTimeSlots(
     current.setMinutes(current.getMinutes() + interval);
   }
 
+  return slots;
+}
 
 export function formatDate(dateString: string): string {
-  return format(new Date(dateString), 'dd/MM/yyyy');
+  return format(new Date(dateString), 'dd/MM/yyyy, EEEE');
 }
 
 export function formatTime(timeString: string): string {
-  return timeString.slice(0, 5); // Ex: "14:30:00" → "14:30"
+  return timeString.slice(0, 5);
 }
 
+export function getDayName(dateString: string): string {
+  const date = new Date(dateString);
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  return days[date.getDay()];
+}
+
+export function getNextBusinessDays(count: number): string[] {
+  const dates: string[] = [];
+  const today = new Date();
   
-  return slots;
+  for (let i = 1; dates.length < count; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    
+    // Skip weekends
+    if (date.getDay() !== 0 && date.getDay() !== 6) {
+      dates.push(date.toISOString().split('T')[0]);
+    }
+  }
+  
+  return dates;
 }

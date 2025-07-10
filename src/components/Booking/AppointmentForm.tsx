@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Calendar, Clock, User, Phone, Mail, MapPin, Shield, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, User, CheckCircle } from 'lucide-react';
 import { Doctor, Specialty, Patient, Appointment, TimeSlot } from '../../types/index';
 import { generateTimeSlots, getDayName, formatDate, getNextBusinessDays } from '../../utils/timeUtils';
-import { supabase } from '../lib/supabaseClient';
+import * as supabaseLib from '../../lib/supabase';
 
 interface AppointmentFormProps {
   selectedDoctor: Doctor | null;
@@ -24,10 +24,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   onTimeSelect,
   onBack,
 }) => {
-  const { state, dispatch } = useApp() || { 
-    state: { doctors: [], appointments: [], specialties: [], insurances: [] }, 
-    dispatch: () => {} 
-  };
+  const { state, dispatch } = useApp();
   
   const [currentStep, setCurrentStep] = useState<'datetime' | 'patient' | 'confirmation'>('datetime');
   const [selectedInsurance, setSelectedInsurance] = useState<string>('');
@@ -41,7 +38,6 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const [datesWithAvailableDoctors, setDatesWithAvailableDoctors] = useState<string[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Função para obter o médico de um horário específico (declarada antes de ser usada)
   const getDoctorForTimeSlot = useCallback((time: string): Doctor | null => {
     if (selectedDoctor) return selectedDoctor;
     
@@ -68,13 +64,11 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     return null;
   }, [selectedDoctor, selectedSpecialty, selectedDate, state.doctors, state.appointments]);
 
-  // Função para obter convênios disponíveis (usa getDoctorForTimeSlot declarada acima)
   const getAvailableInsurances = useCallback((): string[] => {
     const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
     return doctor ? doctor.insurances : [];
   }, [selectedDoctor, selectedTime, getDoctorForTimeSlot]);
 
-  // Função para obter horários disponíveis
   const getAvailableTimeSlots = useCallback((date: string): TimeSlot[] => {
     if (selectedDoctor) {
       const dayName = getDayName(date);
@@ -110,7 +104,6 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     return [];
   }, [selectedDoctor, selectedSpecialty, state.doctors, state.appointments]);
 
-  // Efeito para calcular datas disponíveis
   useEffect(() => {
     const calculateAvailableDates = () => {
       const availableDates = getNextBusinessDays(14);
@@ -123,11 +116,6 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
 
     calculateAvailableDates();
   }, [selectedDoctor, selectedSpecialty, state.doctors, state.appointments, getAvailableTimeSlots]);
-
-  // Verificação de carregamento
-  if (state.isLoading || !state.doctors.length) {
-    return <div className="text-center py-10">Carregando dados...</div>;
-  }
 
   const handleConfirmAppointment = async () => {
     const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
@@ -167,11 +155,6 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     }
   };
 
-  const handleBackToBooking = () => {
-    dispatch({ type: 'SET_VIEW', payload: 'booking' });
-    setShowSuccess(false);
-  };
-
   if (showSuccess) {
     const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
     const specialtyName = selectedSpecialty?.name || 
@@ -188,7 +171,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
           </div>
           <h2 className="text-3xl font-bold text-gray-800 mb-4">Agendamento Confirmado!</h2>
           <p className="text-gray-600 mb-6">
-            Seu agendamento foi confirmado com sucesso. Você receberá um email de confirmação em breve.
+            Seu agendamento foi confirmado com sucesso.
           </p>
           <div className="bg-gray-50 p-4 rounded-lg mb-6 text-left">
             <h3 className="font-semibold text-gray-800 mb-2">Detalhes do Agendamento:</h3>
@@ -203,16 +186,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
           </div>
           <div className="flex space-x-4 justify-center">
             <button
-              onClick={handleBackToBooking}
+              onClick={() => dispatch({ type: 'SET_VIEW', payload: 'booking' })}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
             >
               Fazer Novo Agendamento
-            </button>
-            <button
-              onClick={() => dispatch({ type: 'SET_VIEW', payload: 'login' })}
-              className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              Voltar ao Início
             </button>
           </div>
         </div>
@@ -232,41 +209,6 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         </p>
       </div>
       
-      {/* Indicador de passos */}
-      <div className="flex justify-center mb-8">
-        <div className="flex space-x-4">
-          {['datetime', 'patient', 'confirmation'].map((step, index) => {
-            const isCurrent = currentStep === step;
-            const isCompleted = 
-              (step === 'datetime' && currentStep !== 'datetime') ||
-              (step === 'patient' && currentStep === 'confirmation');
-            
-            return (
-              <div 
-                key={step} 
-                className={`flex items-center ${
-                  isCurrent ? 'text-blue-600' : 
-                  isCompleted ? 'text-green-600' : 'text-gray-400'
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  isCurrent ? 'bg-blue-600 text-white' : 
-                  isCompleted ? 'bg-green-600 text-white' : 'bg-gray-300'
-                }`}>
-                  {index + 1}
-                </div>
-                <span className="ml-2 text-sm font-medium">
-                  {step === 'datetime' && 'Data e Horário'}
-                  {step === 'patient' && 'Dados Pessoais'}
-                  {step === 'confirmation' && 'Confirmação'}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      
-      {/* Conteúdo do formulário */}
       <div className="bg-white rounded-xl shadow-lg p-8">
         {currentStep === 'datetime' && (
           <div className="space-y-6">
@@ -315,11 +257,6 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                       </button>
                     ))}
                 </div>
-                {getAvailableTimeSlots(selectedDate).filter(slot => slot.available).length === 0 && (
-                  <p className="text-gray-500 text-center py-4">
-                    Nenhum horário disponível para esta data
-                  </p>
-                )}
               </div>
             )}
             

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { LogOut, Plus, Users, Calendar, Shield, Activity } from 'lucide-react';
-
+import { LogOut, Users, Calendar, Shield, Activity } from 'lucide-react';
+import ConnectionStatus from '../ConnectionStatus';
+import SystemStatus from '../SystemStatus';
 import SpecialtyManagement from './SpecialtyManagement';
 import DoctorManagement from './DoctorManagement';
 import InsuranceManagement from './InsuranceManagement';
@@ -9,7 +10,7 @@ import AppointmentManagement from './AppointmentManagement';
 
 const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useApp();
-  const [activeTab, setActiveTab] = useState<'specialties' | 'doctors' | 'insurances' | 'appointments'>('specialties');
+  const [activeTab, setActiveTab] = useState<'status' | 'specialties' | 'doctors' | 'insurances' | 'appointments'>('status');
 
   const handleLogout = () => {
     dispatch({ type: 'LOGOUT' });
@@ -25,7 +26,6 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -55,7 +55,6 @@ const AdminDashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* Navigation Tabs */}
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8">
@@ -64,7 +63,7 @@ const AdminDashboard: React.FC = () => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as unknown)}
+                  onClick={() => setActiveTab(tab.id as any)}
                   className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
@@ -83,7 +82,6 @@ const AdminDashboard: React.FC = () => {
         </div>
       </nav>
 
-      {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'status' && <SystemStatus />}
         {activeTab === 'specialties' && <SpecialtyManagement />}

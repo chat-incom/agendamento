@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { Doctor, Specialty, Insurance, Appointment, WorkingHour } from '../types';
-import { supabase } from '../lib/supabaseClient';
+import { Doctor, Specialty, Insurance, Appointment } from '../types';
+import * as supabaseLib from '../lib/supabase';
 
 interface AppState {
   specialties: Specialty[];
@@ -17,7 +17,7 @@ type AppAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'LOAD_DATA'; payload: { specialties: Specialty[]; doctors: Doctor[]; insurances: Insurance[]; appointments: Appointment[]; userId: string | null } }
   | { type: 'SET_VIEW'; payload: 'login' | 'admin' | 'booking' }
-  | { type: 'LOGIN'; payload: string }
+  | { type: 'LOGIN'; payload?: string }
   | { type: 'LOGOUT' }
   | { type: 'ADD_SPECIALTY'; payload: Specialty }
   | { type: 'ADD_DOCTOR'; payload: Doctor }
@@ -58,7 +58,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'SET_VIEW':
       return { ...state, currentView: action.payload };
     case 'LOGIN':
-      return { ...state, isLoggedIn: true, currentView: 'admin', userId: action.payload };
+      return { ...state, isLoggedIn: true, currentView: 'admin', userId: action.payload || 'admin' };
     case 'LOGOUT':
       return { ...state, isLoggedIn: false, currentView: 'login', userId: null };
     case 'ADD_SPECIALTY':
@@ -68,13 +68,6 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'ADD_INSURANCE':
       return { ...state, insurances: [...state.insurances, action.payload] };
     case 'ADD_APPOINTMENT':
-      supabaseLib.inserirAgendamento(
-        state.userId ?? null,
-        action.payload.doctorId,
-        action.payload.date,
-        action.payload.time,
-        action.payload.insuranceId
-      ).catch(console.warn);
       return { ...state, appointments: [...state.appointments, action.payload] };
     case 'UPDATE_DOCTOR':
       return {
@@ -123,92 +116,90 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [state, dispatch] = useReducer(appReducer, initialState);
 
   useEffect(() => {
-  const loadData = async () => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    try {
-      let userId = '';
-      let user = null;
-
-      // Apenas tenta obter usuário se estiver logado (área administrativa)
+    const loadData = async () => {
+      dispatch({ type: 'SET_LOADING', payload: true });
       try {
-        user = await supabaseLib.getUser();
-        userId = user.id;
-      } catch {
-        // Usuário não logado: OK
+        let userId = '';
+        
+        try {
+          const user = await supabaseLib.getUser();
+          userId = user?.id || '';
+        } catch {
+          // Usuário não logado
+        }
+
+        const [specialties, insurances, doctors, appointments, horarios, medicoConvenios] =
+          await Promise.all([
+            supabaseLib.listarEspecialidades(),
+            supabaseLib.listarConvenios(),
+            supabaseLib.listarMedicos(),
+            userId ? supabaseLib.listarAgendamentos(userId) : Promise.resolve([]),
+            supabaseLib.listarHorarios(),
+            supabaseLib.listarMedicoConvenios(),
+          ]);
+
+        const doctorsWithExtras: Doctor[] = doctors.map(d => {
+          const workingHours = horarios
+            .filter(h => h.medico_id === d.id)
+            .map(h => ({
+              day: h.dia,
+              startTime: h.horario_inicio,
+              endTime: h.horario_fim,
+              intervalMinutes: 30,
+            }));
+
+          const doctorInsurances = medicoConvenios
+            .filter(mc => mc.medico_id === d.id)
+            .map(mc => mc.convenio_id);
+
+          return {
+            id: d.id,
+            name: d.nome,
+            crm: d.crm,
+            specialtyId: d.especialidade_id,
+            insurances: doctorInsurances,
+            workingHours,
+            createdAt: new Date(d.created_at || new Date()),
+          };
+        });
+
+        dispatch({
+          type: 'LOAD_DATA',
+          payload: {
+            userId,
+            specialties: specialties.map(s => ({
+              id: s.id,
+              name: s.nome,
+              description: s.nome,
+              createdAt: new Date(s.created_at || new Date()),
+            })),
+            insurances: insurances.map(i => ({
+              id: i.id,
+              name: i.nome,
+              type: 'private' as const,
+            })),
+            doctors: doctorsWithExtras,
+            appointments: appointments.map(a => ({
+              id: a.id,
+              doctorId: a.medico_id,
+              date: a.data,
+              time: a.horario,
+              insuranceId: a.convenio_id,
+              status: 'scheduled' as const,
+              createdAt: new Date(a.created_at || new Date()),
+              patient: { name: '', birthDate: '', city: '', phone: '', email: '' },
+            })),
+          },
+        });
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
+    };
 
-      const [specialties, insurances, doctors, appointments, horarios, medicoConvenios] =
-        await Promise.all([
-          supabaseLib.listarEspecialidades(),
-          supabaseLib.listarConvenios(),
-          supabaseLib.listarMedicos(),
-          userId ? supabaseLib.listarAgendamentos(userId) : Promise.resolve([]),
-          supabaseLib.listarHorarios(),
-          supabaseLib.listarMedicoConvenios(),
-        ]);
-
-      const doctorsWithExtras: Doctor[] = doctors.map(d => {
-        const workingHours = horarios
-          .filter(h => h.medico_id === d.id)
-          .map(h => ({
-            day: h.dia,
-            startTime: h.horario_inicio,
-            endTime: h.horario_fim,
-          }));
-
-        const doctorInsurances = medicoConvenios
-          .filter(mc => mc.medico_id === d.id)
-          .map(mc => mc.convenio_id);
-
-        return {
-          id: d.id,
-          name: d.nome,
-          crm: d.crm,
-          specialtyId: d.especialidade_id,
-          insurances: doctorInsurances,
-          workingHours,
-          createdAt: new Date(d.created_at ?? new Date()),
-        };
-      });
-
-      dispatch({
-        type: 'LOAD_DATA',
-        payload: {
-          userId,
-          specialties: specialties.map(s => ({
-            id: s.id,
-            name: s.nome,
-            description: '',
-            createdAt: new Date(s.created_at ?? new Date()),
-          })),
-          insurances: insurances.map(i => ({
-            id: i.id,
-            name: i.nome,
-            type: 'private',
-          })),
-          doctors: doctorsWithExtras,
-          appointments: appointments.map(a => ({
-            id: a.id,
-            doctorId: a.medico_id,
-            date: a.data,
-            time: a.horario,
-            insuranceId: a.convenio_id,
-            status: 'scheduled',
-            createdAt: new Date(a.created_at ?? new Date()),
-            patient: { name: '', birthDate: '', city: '', phone: '', email: '' },
-          })),
-        },
-      });
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  };
-
-  loadData();
-}, []);
-
+    loadData();
+  }, []);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>
@@ -224,5 +215,3 @@ export const useApp = () => {
   }
   return context;
 };
-
-

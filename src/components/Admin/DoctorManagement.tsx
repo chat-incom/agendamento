@@ -1,9 +1,7 @@
-// DoctorManagement.tsx
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Plus, User, Clock, Shield, Edit, Trash2 } from 'lucide-react';
 import { Doctor, WorkingHours } from '../../types/index';
-import { supabase } from '../../lib/supabaseClient';
 
 const DoctorManagement: React.FC = () => {
   const { state, dispatch } = useApp();
@@ -48,33 +46,14 @@ const DoctorManagement: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (confirm('Tem certeza que deseja excluir este médico?')) {
-      const { error } = await supabase.from('medicos').delete().eq('id', id);
-      if (!error) dispatch({ type: 'DELETE_DOCTOR', payload: id });
+      dispatch({ type: 'DELETE_DOCTOR', payload: id });
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const { data: existingDoctors, error: fetchError } = await supabase
-      .from('medicos')
-      .select('*')
-      .eq('crm', formData.crm);
-
-    if (fetchError) {
-      console.error('Erro ao verificar CRM existente:', fetchError.message);
-      return;
-    }
-
-    if (
-      existingDoctors.length > 0 &&
-      (!editingDoctor || existingDoctors[0].id !== editingDoctor.id)
-    ) {
-      alert('Já existe um médico cadastrado com este CRM.');
-      return;
-    }
 
     if (editingDoctor) {
       const updatedDoctor: Doctor = {
@@ -86,12 +65,7 @@ const DoctorManagement: React.FC = () => {
         workingHours: formData.workingHours,
       };
 
-      const { error } = await supabase
-        .from('medicos')
-        .update(updatedDoctor)
-        .eq('id', editingDoctor.id);
-
-      if (!error) dispatch({ type: 'UPDATE_DOCTOR', payload: updatedDoctor });
+      dispatch({ type: 'UPDATE_DOCTOR', payload: updatedDoctor });
     } else {
       const newDoctor: Doctor = {
         id: Date.now().toString(),
@@ -103,9 +77,7 @@ const DoctorManagement: React.FC = () => {
         createdAt: new Date(),
       };
 
-      const { error } = await supabase.from('medicos').insert([newDoctor]);
-
-      if (!error) dispatch({ type: 'ADD_DOCTOR', payload: newDoctor });
+      dispatch({ type: 'ADD_DOCTOR', payload: newDoctor });
     }
 
     setFormData({ name: '', crm: '', specialtyId: '', selectedInsurances: [], workingHours: [] });
@@ -144,7 +116,173 @@ const DoctorManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Form, Lista e restante do componente continuam os mesmos */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Médicos</h2>
+          <p className="text-gray-600">Gerencie os médicos da clínica</p>
+        </div>
+        <button
+          onClick={() => setShowForm(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Novo Médico</span>
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">{editingDoctor ? 'Editar Médico' : 'Novo Médico'}</h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">CRM</label>
+                  <input
+                    type="text"
+                    value={formData.crm}
+                    onChange={(e) => setFormData({ ...formData, crm: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Especialidade</label>
+                <select
+                  value={formData.specialtyId}
+                  onChange={(e) => setFormData({ ...formData, specialtyId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Selecione uma especialidade</option>
+                  {state.specialties.map((specialty) => (
+                    <option key={specialty.id} value={specialty.id}>
+                      {specialty.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Convênios</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {state.insurances.map((insurance) => (
+                    <label key={insurance.id} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.selectedInsurances.includes(insurance.id)}
+                        onChange={() => handleInsuranceToggle(insurance.id)}
+                        className="mr-2"
+                      />
+                      {insurance.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  {editingDoctor ? 'Atualizar' : 'Salvar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {state.doctors.map((doctor) => (
+          <div key={doctor.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="bg-blue-100 p-2 rounded-lg">
+                  <User className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">{doctor.name}</h3>
+                  <p className="text-sm text-gray-600">{doctor.crm}</p>
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => handleEdit(doctor)}
+                  className="text-gray-400 hover:text-blue-600 transition-colors"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => handleDelete(doctor.id)}
+                  className="text-gray-400 hover:text-red-600 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              <div>
+                <span className="text-sm font-medium text-gray-700">Especialidade:</span>
+                <p className="text-sm text-gray-600">{getSpecialtyName(doctor.specialtyId)}</p>
+              </div>
+              
+              <div>
+                <span className="text-sm font-medium text-gray-700">Convênios:</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {doctor.insurances.map((insuranceId) => {
+                    const insurance = state.insurances.find(i => i.id === insuranceId);
+                    return insurance ? (
+                      <span key={insuranceId} className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                        {insurance.name}
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+              
+              <div>
+                <span className="text-sm font-medium text-gray-700">Horários:</span>
+                <div className="text-xs text-gray-600 mt-1">
+                  {doctor.workingHours.map((wh) => (
+                    <div key={wh.day}>
+                      {dayLabels[wh.day as keyof typeof dayLabels]}: {wh.startTime} - {wh.endTime}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {state.doctors.length === 0 && (
+        <div className="text-center py-12">
+          <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum médico cadastrado</h3>
+          <p className="text-gray-500">Comece adicionando um novo médico</p>
+        </div>
+      )}
     </div>
   );
 };
