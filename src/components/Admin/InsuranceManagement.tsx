@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Plus, Shield, Edit, Trash2 } from 'lucide-react';
-import { Insurance } from '../../types';
+import { Insurance } from '../../types/index';
 
 const InsuranceManagement: React.FC = () => {
   const { state, dispatch } = useApp();
