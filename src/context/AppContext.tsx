@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { Doctor, Specialty, Insurance, Appointment, WorkingHours, Patient } from '../types/index';
+import { Doctor, Specialty, Insurance, Appointment, WorkingHour } from '../types';
 import * as supabaseLib from '../supabase';
 
 interface AppState {
@@ -10,13 +10,14 @@ interface AppState {
   isLoggedIn: boolean;
   currentView: 'login' | 'admin' | 'booking';
   isLoading: boolean;
+  userId: string;
 }
 
 type AppAction =
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'LOAD_DATA'; payload: { specialties: Specialty[]; doctors: Doctor[]; insurances: Insurance[]; appointments: Appointment[] } }
+  | { type: 'LOAD_DATA'; payload: { specialties: Specialty[]; doctors: Doctor[]; insurances: Insurance[]; appointments: Appointment[]; userId: string } }
   | { type: 'SET_VIEW'; payload: 'login' | 'admin' | 'booking' }
-  | { type: 'LOGIN'; payload?: string }
+  | { type: 'LOGIN'; payload: string }
   | { type: 'LOGOUT' }
   | { type: 'ADD_SPECIALTY'; payload: Specialty }
   | { type: 'ADD_DOCTOR'; payload: Doctor }
@@ -37,6 +38,7 @@ const initialState: AppState = {
   isLoggedIn: false,
   currentView: 'login',
   isLoading: false,
+  userId: '',
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
@@ -44,67 +46,55 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     case 'LOAD_DATA':
-      return { ...state, ...action.payload, isLoading: false };
+      return {
+        ...state,
+        specialties: action.payload.specialties,
+        doctors: action.payload.doctors,
+        insurances: action.payload.insurances,
+        appointments: action.payload.appointments,
+        userId: action.payload.userId,
+        isLoading: false,
+      };
     case 'SET_VIEW':
       return { ...state, currentView: action.payload };
     case 'LOGIN':
-      return { ...state, isLoggedIn: true, currentView: 'admin' };
+      return { ...state, isLoggedIn: true, currentView: 'admin', userId: action.payload };
     case 'LOGOUT':
-      return { ...state, isLoggedIn: false, currentView: 'login' };
+      return { ...state, isLoggedIn: false, currentView: 'login', userId: '' };
     case 'ADD_SPECIALTY':
-      supabaseLib.inserirEspecialidade(action.payload.name).catch(console.warn);
       return { ...state, specialties: [...state.specialties, action.payload] };
     case 'ADD_DOCTOR':
-      supabaseLib.inserirMedico(action.payload.name, action.payload.crm, action.payload.specialtyId).catch(console.warn);
       return { ...state, doctors: [...state.doctors, action.payload] };
     case 'ADD_INSURANCE':
-      supabaseLib.inserirConvenio(action.payload.name).catch(console.warn);
       return { ...state, insurances: [...state.insurances, action.payload] };
     case 'ADD_APPOINTMENT':
-      supabaseLib.inserirAgendamento(
-        '', // ajuste se tiver ID de usuário
-        action.payload.doctorId,
-        action.payload.date,
-        action.payload.time,
-        action.payload.insuranceId
-      ).catch(console.warn);
       return { ...state, appointments: [...state.appointments, action.payload] };
     case 'UPDATE_DOCTOR':
-      supabaseLib.atualizarMedico(action.payload.id, {
-        nome: action.payload.name,
-        crm: action.payload.crm,
-        especialidade_id: action.payload.specialtyId,
-      }).catch(console.warn);
       return {
         ...state,
-        doctors: state.doctors.map(d => d.id === action.payload.id ? action.payload : d),
+        doctors: state.doctors.map(d => (d.id === action.payload.id ? action.payload : d)),
       };
     case 'UPDATE_SPECIALTY':
-      supabaseLib.atualizarEspecialidade(action.payload.id, action.payload.name).catch(console.warn);
       return {
         ...state,
-        specialties: state.specialties.map(s => s.id === action.payload.id ? action.payload : s),
+        specialties: state.specialties.map(s => (s.id === action.payload.id ? action.payload : s)),
       };
     case 'UPDATE_INSURANCE':
-      supabaseLib.atualizarConvenio(action.payload.id, action.payload.name).catch(console.warn);
       return {
         ...state,
-        insurances: state.insurances.map(i => i.id === action.payload.id ? action.payload : i),
+        insurances: state.insurances.map(i => (i.id === action.payload.id ? action.payload : i)),
       };
     case 'DELETE_DOCTOR':
-      supabaseLib.deletarMedico(action.payload).catch(console.warn);
       return {
         ...state,
         doctors: state.doctors.filter(d => d.id !== action.payload),
       };
     case 'DELETE_SPECIALTY':
-      supabaseLib.deletarEspecialidade(action.payload).catch(console.warn);
       return {
         ...state,
         specialties: state.specialties.filter(s => s.id !== action.payload),
       };
     case 'DELETE_INSURANCE':
-      supabaseLib.deletarConvenio(action.payload).catch(console.warn);
       return {
         ...state,
         insurances: state.insurances.filter(i => i.id !== action.payload),
@@ -122,19 +112,6 @@ const AppContext = createContext<{
   dispatch: () => {},
 });
 
-const mapDayFromPortuguese = (day: string): WorkingHours['day'] => {
-  const map: Record<string, WorkingHours['day']> = {
-    'Segunda': 'monday',
-    'Terça': 'tuesday',
-    'Quarta': 'wednesday',
-    'Quinta': 'thursday',
-    'Sexta': 'friday',
-    'Sábado': 'saturday',
-    'Domingo': 'sunday',
-  };
-  return map[day] || 'monday';
-};
-
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
@@ -142,24 +119,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const loadData = async () => {
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
-        const [specialties, insurances, doctors, appointments, horarios, medicoConvenios, usuarios] = await Promise.all([
-          supabaseLib.listarEspecialidades(),
-          supabaseLib.listarConvenios(),
-          supabaseLib.listarMedicos(),
-          supabaseLib.listarAgendamentos(''),
-          supabaseLib.listarHorarios(),
-          supabaseLib.listarMedicoConvenios(),
-          supabaseLib.listarUsuarios(),
-        ]);
+        const user = await supabaseLib.getUser();
+        const userId = user.id;
+
+        const [specialties, insurances, doctors, appointments, horarios, medicoConvenios] =
+          await Promise.all([
+            supabaseLib.listarEspecialidades(),
+            supabaseLib.listarConvenios(),
+            supabaseLib.listarMedicos(),
+            supabaseLib.listarAgendamentos(userId),
+            supabaseLib.listarHorarios(),
+            supabaseLib.listarMedicoConvenios(),
+          ]);
 
         const doctorsWithExtras: Doctor[] = doctors.map(d => {
-          const workingHours: WorkingHours[] = horarios
+          const workingHours = horarios
             .filter(h => h.medico_id === d.id)
             .map(h => ({
-              day: mapDayFromPortuguese(h.dia_semana),
+              day: h.dia,
               startTime: h.horario_inicio,
               endTime: h.horario_fim,
-              intervalMinutes: h.tempo_intervalo,
             }));
 
           const doctorInsurances = medicoConvenios
@@ -173,47 +152,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             specialtyId: d.especialidade_id,
             insurances: doctorInsurances,
             workingHours,
-            createdAt: new Date(),
-          };
-        });
-
-        const fullAppointments: Appointment[] = appointments.map(a => {
-          const usuario = usuarios.find(u => u.id === a.usuario_id);
-          const patient: Patient = usuario
-            ? {
-                name: usuario.nome,
-                birthDate: usuario.data_nascimento,
-                city: usuario.cidade,
-                phone: usuario.contato,
-                email: '', // ajuste conforme for adicionado no banco
-              }
-            : {
-                name: '',
-                birthDate: '',
-                city: '',
-                phone: '',
-                email: '',
-              };
-
-          return {
-            id: a.id,
-            doctorId: a.medico_id,
-            date: a.data,
-            time: a.horario,
-            insuranceId: a.convenio_id,
-            status: 'scheduled',
-            createdAt: new Date(a.criado_em),
-            patient,
+            createdAt: new Date(d.created_at ?? new Date()),
           };
         });
 
         dispatch({
           type: 'LOAD_DATA',
           payload: {
-            specialties: specialties.map(s => ({ id: s.id, name: s.nome, description: s.nome, createdAt: new Date() })),
-            insurances: insurances.map(i => ({ id: i.id, name: i.nome, type: 'private' })),
+            userId,
+            specialties: specialties.map(s => ({
+              id: s.id,
+              name: s.nome,
+              description: '',
+              createdAt: new Date(s.created_at ?? new Date()),
+            })),
+            insurances: insurances.map(i => ({
+              id: i.id,
+              name: i.nome,
+              type: 'private',
+            })),
             doctors: doctorsWithExtras,
-            appointments: fullAppointments,
+            appointments: appointments.map(a => ({
+              id: a.id,
+              doctorId: a.medico_id,
+              date: a.data,
+              time: a.horario,
+              insuranceId: a.convenio_id,
+              status: 'scheduled',
+              createdAt: new Date(a.created_at ?? new Date()),
+              patient: { name: '', birthDate: '', city: '', phone: '', email: '' },
+            })),
           },
         });
       } catch (error) {
