@@ -45,20 +45,51 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     return <div className="text-center py-10">Carregando dados...</div>;
   }
 
-  useEffect(() => {
+ useEffect(() => {
   console.log('useEffect triggered with:', {
     selectedDoctor,
     selectedSpecialty,
     state,
   });
 
- useEffect(() => {
-   
+  const getAvailableTimeSlots = (date: string) => {
+    if (selectedDoctor) {
+      const dayOfWeek = getDayName(date); // ex: 'monday'
+      const workingHours = selectedDoctor.workingHours.find(wh => wh.day === dayOfWeek);
+      return workingHours
+        ? generateTimeSlots(workingHours, date, state.appointments, selectedDoctor.id)
+        : [];
+    }
+
+    if (selectedSpecialty) {
+      const matchingDoctors = state.doctors.filter(
+        doctor => doctor.specialtyId === selectedSpecialty.id
+      );
+
+      const allSlots: TimeSlot[] = [];
+      for (const doctor of matchingDoctors) {
+        const dayOfWeek = getDayName(date);
+        const workingHours = doctor.workingHours.find(wh => wh.day === dayOfWeek);
+        if (workingHours) {
+          const slots = generateTimeSlots(workingHours, date, state.appointments, doctor.id);
+          allSlots.push(...slots);
+        }
+      }
+      return allSlots;
+    }
+
+    return [];
+  };
+
   const availableDates = getNextBusinessDays(14);
   const filteredDates = availableDates.filter((date) => {
-    const slots = getAvailableTimeSlots(date); // ← esta função está sendo usada
+    const slots = getAvailableTimeSlots(date);
     return slots.some((slot) => slot.available);
   });
+
+  setDatesWithAvailableDoctors(filteredDates);
+}, [selectedDoctor, selectedSpecialty, state.appointments, state.doctors]);
+
 
   setDatesWithAvailableDoctors(filteredDates);
 }, [selectedDoctor, selectedSpecialty, state.doctors, state.appointments]); // ← faltam dependências
