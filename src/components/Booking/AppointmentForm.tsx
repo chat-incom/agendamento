@@ -23,7 +23,17 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   onTimeSelect,
   onBack,
 }) => {
-  const { state, dispatch } = useApp() || { state: { doctors: [], appointments: [], specialties: [], insurances: [] }, dispatch: () => {} }; // Fallback
+  const { state, dispatch } = useApp() || { 
+    state: { 
+      doctors: [], 
+      appointments: [], 
+      specialties: [], 
+      insurances: [] 
+    }, 
+    dispatch: () => {} 
+  }; // Fallback
+  console.log('State:', state); // Log do estado
+
   const [currentStep, setCurrentStep] = useState<'datetime' | 'patient' | 'confirmation'>('datetime');
   const [selectedInsurance, setSelectedInsurance] = useState<string>('');
   const [patientData, setPatientData] = useState<Patient>({
@@ -38,18 +48,25 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
 
   // Calcula datas disponíveis quando os dados mudarem
   useEffect(() => {
+    console.log('useEffect triggered with:', { selectedDoctor, selectedSpecialty, state });
     const availableDates = getNextBusinessDays(14);
     const filteredDates = availableDates.filter(date => {
-      return getAvailableTimeSlots(date).some(slot => slot.available);
+      const slots = getAvailableTimeSlots(date);
+      console.log('Slots for date', date, ':', slots); // Log dos slots
+      return slots.some(slot => slot.available);
     });
     setDatesWithAvailableDoctors(filteredDates);
   }, [selectedDoctor, selectedSpecialty, state.doctors, state.appointments]);
 
   const getAvailableTimeSlots = (date: string): TimeSlot[] => {
+    console.log('getAvailableTimeSlots called with date:', date, 'selectedDoctor:', selectedDoctor, 'selectedSpecialty:', selectedSpecialty);
     if (selectedDoctor) {
       const dayName = getDayName(date);
       const workingHours = selectedDoctor.workingHours.find(wh => wh.day === dayName);
-      if (!workingHours) return [];
+      if (!workingHours) {
+        console.log('No working hours for', dayName);
+        return [];
+      }
       return generateTimeSlots(workingHours, date, state.appointments || [], selectedDoctor.id);
     } else if (selectedSpecialty) {
       const doctors = state.doctors?.filter(d => d.specialtyId === selectedSpecialty.id) || [];
@@ -68,6 +85,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   };
 
   const getDoctorForTimeSlot = (time: string): Doctor | null => {
+    console.log('getDoctorForTimeSlot called with time:', time);
     if (selectedDoctor) return selectedDoctor;
     if (selectedSpecialty && selectedDate) {
       const doctors = state.doctors?.filter(doctor => doctor.specialtyId === selectedSpecialty.id) || [];
@@ -86,6 +104,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
 
   const getAvailableInsurances = (): string[] => {
     const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
+    console.log('getAvailableInsurances doctor:', doctor);
     return doctor ? doctor.insurances : [];
   };
 
