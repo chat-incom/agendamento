@@ -30,34 +30,9 @@ type AppAction =
   | { type: 'DELETE_INSURANCE'; payload: string };
 
 const initialState: AppState = {
-  specialties: [
-    { id: '1', name: 'Cardiologia', description: 'Especialidade focada no coração e sistema circulatório', createdAt: new Date() },
-    { id: '2', name: 'Dermatologia', description: 'Cuidados com a pele, cabelos e unhas', createdAt: new Date() },
-    { id: '3', name: 'Pediatria', description: 'Especialidade médica dedicada ao cuidado infantil', createdAt: new Date() },
-  ],
-  doctors: [
-    {
-      id: '1',
-      name: 'Dr. João Silva',
-      crm: 'CRM/SP 123456',
-      specialtyId: '1',
-      insurances: ['1', '2'],
-      workingHours: [
-        { day: 'monday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-        { day: 'tuesday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-        { day: 'wednesday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-        { day: 'thursday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-        { day: 'friday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-      ],
-      createdAt: new Date(),
-    },
-  ],
-  insurances: [
-    { id: '1', name: 'SUS', type: 'public' },
-    { id: '2', name: 'Unimed', type: 'private' },
-    { id: '3', name: 'Bradesco Saúde', type: 'private' },
-    { id: '4', name: 'Amil', type: 'private' },
-  ],
+  specialties: [],
+  doctors: [],
+  insurances: [],
   appointments: [],
   isLoggedIn: false,
   currentView: 'login',
@@ -69,11 +44,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     case 'LOAD_DATA':
-      return { 
-        ...state, 
-        ...action.payload, 
-        isLoading: false 
-      };
+      return { ...state, ...action.payload, isLoading: false };
     case 'SET_VIEW':
       return { ...state, currentView: action.payload };
     case 'LOGIN':
@@ -173,26 +144,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const loadData = async () => {
       dispatch({ type: 'SET_LOADING', payload: true });
-      
+      console.log('Iniciando carregamento de dados do Supabase...');
+
       try {
         const [specialties, doctors, insurances, appointments] = await Promise.all([
           db.getSpecialties(),
-          db.getDoctors(), 
+          db.getDoctors(),
           db.getInsurances(),
           db.getAppointments()
         ]);
-        
-        dispatch({ 
-          type: 'LOAD_DATA', 
-          payload: { 
-            specialties: specialties || initialState.specialties, 
-            doctors: doctors || initialState.doctors, 
-            insurances: insurances || initialState.insurances, 
-            appointments: appointments || initialState.appointments 
-          } 
+
+        console.log('Dados carregados com sucesso:', { specialties, doctors, insurances, appointments });
+        dispatch({
+          type: 'LOAD_DATA',
+          payload: { specialties, doctors, insurances, appointments }
         });
       } catch (error) {
-        console.error('Erro ao carregar dados do Supabase:', error);
+        console.error('Erro ao carregar dados do Supabase:', error instanceof Error ? error.message : error);
+        // Fallback para dados iniciais em caso de erro
+        dispatch({
+          type: 'LOAD_DATA',
+          payload: {
+            specialties: initialState.specialties,
+            doctors: initialState.doctors,
+            insurances: initialState.insurances,
+            appointments: initialState.appointments
+          }
+        });
+      } finally {
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     };
