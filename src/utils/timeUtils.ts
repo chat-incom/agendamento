@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+
 import { WorkingHours, Appointment, TimeSlot } from '../types/index';
 
 export function generateTimeSlots(
@@ -20,7 +20,7 @@ export function generateTimeSlots(
     return slots;
   }
 
-  const interval = workingHours.intervalMinutes || 30;
+  const interval = workingHours.intervalMinutes || 15;
   const startTime = new Date(`${date}T${workingHours.startTime}:00`);
   const endTime = new Date(`${date}T${workingHours.endTime}:00`);
 
