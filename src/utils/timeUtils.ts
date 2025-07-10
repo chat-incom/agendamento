@@ -52,5 +52,16 @@ export function generateTimeSlots(
     current.setMinutes(current.getMinutes() + interval);
   }
 
+  import { format } from 'date-fns';
+
+export function formatDate(dateString: string): string {
+  return format(new Date(dateString), 'dd/MM/yyyy');
+}
+
+export function formatTime(timeString: string): string {
+  return timeString.slice(0, 5); // Ex: "14:30:00" → "14:30"
+}
+
+  
   return slots;
 }
