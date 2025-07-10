@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { Doctor, Specialty, Insurance, Appointment } from '../types';
-import * as supabaseLib from '../lib/supabase';
+import * as supabaseLib from '../supabase'; // Ajustado para o novo caminho
 
 interface AppState {
   specialties: Specialty[];
@@ -154,7 +154,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const loadData = async () => {
       dispatch({ type: 'SET_LOADING', payload: true });
-      console.log('Iniciando carregamento de dados do Supabase...');
+      console.log('Iniciando carregamento de dados do Supabase às 10:00 PM -03, 09/07/2025...');
 
       try {
         const [specialties, insurances, doctors, appointments] = await Promise.all([
