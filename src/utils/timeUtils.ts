@@ -34,7 +34,7 @@ export function generateTimeSlots(
     throw new Error('Invalid date or time construction');
   }
 
-  let current = new Date(startTime);
+  const current = new Date(startTime);
 
   while (current < endTime) {
     const time = current.toTimeString().slice(0, 5); // Formato HH:MM
