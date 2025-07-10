@@ -24,15 +24,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   onBack,
 }) => {
   const { state, dispatch } = useApp() || { 
-    state: { 
-      doctors: [], 
-      appointments: [], 
-      specialties: [], 
-      insurances: [] 
-    }, 
+    state: { doctors: [], appointments: [], specialties: [], insurances: [] }, 
     dispatch: () => {} 
-  }; // Fallback
-  console.log('State:', state); // Log do estado
+  };
+  console.log('State:', state);
 
   const [currentStep, setCurrentStep] = useState<'datetime' | 'patient' | 'confirmation'>('datetime');
   const [selectedInsurance, setSelectedInsurance] = useState<string>('');
@@ -46,13 +41,18 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const [datesWithAvailableDoctors, setDatesWithAvailableDoctors] = useState<string[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // Exibe carregando se os dados ainda não estiverem prontos
+  if (state.isLoading || !state.doctors || !state.appointments) {
+    return <div className="text-center py-10">Carregando dados...</div>;
+  }
+
   // Calcula datas disponíveis quando os dados mudarem
   useEffect(() => {
     console.log('useEffect triggered with:', { selectedDoctor, selectedSpecialty, state });
     const availableDates = getNextBusinessDays(14);
     const filteredDates = availableDates.filter(date => {
       const slots = getAvailableTimeSlots(date);
-      console.log('Slots for date', date, ':', slots); // Log dos slots
+      console.log('Slots for date', date, ':', slots);
       return slots.some(slot => slot.available);
     });
     setDatesWithAvailableDoctors(filteredDates);
