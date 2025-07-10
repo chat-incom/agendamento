@@ -1,37 +1,47 @@
-// utils/timeUtils.ts
 import { WorkingHours, Appointment, TimeSlot } from '../types';
 
-/**
- * Gera os horários disponíveis para um dado período de trabalho do médico,
- * respeitando o intervalo definido na agenda (workingHours.interval).
- */
 export function generateTimeSlots(
   workingHours: WorkingHours,
   date: string,
-  appointments: Appointment[],
+  appointments: Appointment[] = [],
   doctorId: string
 ): TimeSlot[] {
   const slots: TimeSlot[] = [];
 
-  // Extrai hora e minuto do início e fim do expediente
+  // Validações básicas
+  if (!workingHours.start || !workingHours.end || !date) {
+    throw new Error('Invalid input: start, end, or date is missing');
+  }
+
   const [startHour, startMinute] = workingHours.start.split(':').map(Number);
   const [endHour, endMinute] = workingHours.end.split(':').map(Number);
 
-  // Usa o intervalo definido na agenda, default 15 minutos se não existir
-  const interval = workingHours.interval ?? 15;
+  if (
+    isNaN(startHour) || isNaN(startMinute) ||
+    isNaN(endHour) || isNaN(endMinute) ||
+    startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23 ||
+    startMinute < 0 || startMinute > 59 || endMinute < 0 || endMinute > 59
+  ) {
+    throw new Error('Invalid time format in workingHours');
+  }
 
-  // Cria objetos Date para controlar os horários
+  const interval = Math.max(workingHours.interval ?? 15, 1); // Garante intervalo positivo
+
   const startTime = new Date(`${date}T${workingHours.start}:00`);
   const endTime = new Date(`${date}T${workingHours.end}:00`);
 
+  if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+    throw new Error('Invalid date or time construction');
+  }
+
   let current = new Date(startTime);
 
-  // Loop para criar todos os slots até o fim do expediente
+  // Loop até antes do horário final
   while (current < endTime) {
     const time = current.toTimeString().slice(0, 5); // Formato HH:MM
 
-    // Verifica se já existe uma consulta nesse horário para o médico
-    const isTaken = appointments.some(
+    // Verifica se o horário está ocupado
+    const isTaken = Array.isArray(appointments) && appointments.some(
       (appt) =>
         appt.date === date && appt.time === time && appt.doctorId === doctorId
     );
@@ -42,7 +52,6 @@ export function generateTimeSlots(
       available: !isTaken,
     });
 
-    // Incrementa o horário atual pelo intervalo definido
     current.setMinutes(current.getMinutes() + interval);
   }
 
