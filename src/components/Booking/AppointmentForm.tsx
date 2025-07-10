@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Calendar, Clock, User, Phone, Mail, MapPin, Shield, CheckCircle } from 'lucide-react';
 import { Doctor, Specialty, Patient, Appointment, TimeSlot } from '../../types/index';
 import { generateTimeSlots, getDayName, formatDate, getNextBusinessDays } from '../../utils/timeUtils';
+import { supabaseLib } from '../../utils/supabaseClient';
 
 interface AppointmentFormProps {
   selectedDoctor: Doctor | null;
@@ -27,8 +28,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     state: { doctors: [], appointments: [], specialties: [], insurances: [] }, 
     dispatch: () => {} 
   };
-  console.log('State no AppointmentForm:', state);
-
+  
   const [currentStep, setCurrentStep] = useState<'datetime' | 'patient' | 'confirmation'>('datetime');
   const [selectedInsurance, setSelectedInsurance] = useState<string>('');
   const [patientData, setPatientData] = useState<Patient>({
@@ -41,119 +41,106 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const [datesWithAvailableDoctors, setDatesWithAvailableDoctors] = useState<string[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  if (state.isLoading || !state.doctors.length || !state.appointments.length) {
-    return <div className="text-center py-10">Carregando dados...</div>;
-  }
-
- useEffect(() => {
-  console.log('useEffect triggered with:', {
-    selectedDoctor,
-    selectedSpecialty,
-    state,
-  });
-
-  const getAvailableTimeSlots = (date: string) => {
-    if (selectedDoctor) {
-      const dayOfWeek = getDayName(date); // ex: 'monday'
-      const workingHours = selectedDoctor.workingHours.find(wh => wh.day === dayOfWeek);
-      return workingHours
-        ? generateTimeSlots(workingHours, date, state.appointments, selectedDoctor.id)
-        : [];
-    }
-
-    if (selectedSpecialty) {
-      const matchingDoctors = state.doctors.filter(
-        doctor => doctor.specialtyId === selectedSpecialty.id
-      );
-
-      const allSlots: TimeSlot[] = [];
-      for (const doctor of matchingDoctors) {
-        const dayOfWeek = getDayName(date);
-        const workingHours = doctor.workingHours.find(wh => wh.day === dayOfWeek);
-        if (workingHours) {
-          const slots = generateTimeSlots(workingHours, date, state.appointments, doctor.id);
-          allSlots.push(...slots);
-        }
-      }
-      return allSlots;
-    }
-
-    return [];
-  };
-
-  const availableDates = getNextBusinessDays(14);
-  const filteredDates = availableDates.filter((date) => {
-    const slots = getAvailableTimeSlots(date);
-    return slots.some((slot) => slot.available);
-  });
-
-  setDatesWithAvailableDoctors(filteredDates);
-}, [selectedDoctor, selectedSpecialty, state.appointments, state.doctors]);
-
-
-  setDatesWithAvailableDoctors(filteredDates);
-}, [selectedDoctor, selectedSpecialty, state.doctors, state.appointments]); // ← faltam dependências
-
-  setDatesWithAvailableDoctors(filteredDates);
-}, [selectedDoctor, selectedSpecialty, state.doctors, state.appointments]);
-
-
-  const getAvailableTimeSlots = (date: string): TimeSlot[] => {
-    console.log('getAvailableTimeSlots called with date:', date, 'selectedDoctor:', selectedDoctor, 'selectedSpecialty:', selectedSpecialty);
-    if (selectedDoctor) {
-      const dayName = getDayName(date);
-      const workingHours = selectedDoctor.workingHours.find(wh => wh.day === dayName);
-      if (!workingHours) {
-        console.log('No working hours for', dayName);
-        return [];
-      }
-      return generateTimeSlots(workingHours, date, state.appointments || [], selectedDoctor.id);
-    } else if (selectedSpecialty) {
-      const doctors = state.doctors.filter(d => d.specialtyId === selectedSpecialty.id);
-      const allSlots: TimeSlot[] = [];
-      doctors.forEach(doctor => {
-        const dayName = getDayName(date);
-        const workingHours = doctor.workingHours.find(wh => wh.day === dayName);
-        if (workingHours) {
-          const slots = generateTimeSlots(workingHours, date, state.appointments || [], doctor.id);
-          allSlots.push(...slots);
-        }
-      });
-      return allSlots.sort((a, b) => a.time.localeCompare(b.time));
-    }
-    return [];
-  };
-
-  const getDoctorForTimeSlot = (time: string): Doctor | null => {
-    console.log('getDoctorForTimeSlot called with time:', time);
+  // Função para obter o médico de um horário específico (declarada antes de ser usada)
+  const getDoctorForTimeSlot = useCallback((time: string): Doctor | null => {
     if (selectedDoctor) return selectedDoctor;
+    
     if (selectedSpecialty && selectedDate) {
       const doctors = state.doctors.filter(doctor => doctor.specialtyId === selectedSpecialty.id);
+      
       for (const doctor of doctors) {
         const dayName = getDayName(selectedDate);
         const workingHours = doctor.workingHours.find(wh => wh.day === dayName);
+        
         if (workingHours) {
-          const slots = generateTimeSlots(workingHours, selectedDate, state.appointments || [], doctor.id);
+          const slots = generateTimeSlots(
+            workingHours, 
+            selectedDate, 
+            state.appointments || [], 
+            doctor.id
+          );
+          
           const availableSlot = slots.find(s => s.time === time && s.available);
           if (availableSlot) return doctor;
         }
       }
     }
     return null;
-  };
+  }, [selectedDoctor, selectedSpecialty, selectedDate, state.doctors, state.appointments]);
 
-  const getAvailableInsurances = (): string[] => {
+  // Função para obter convênios disponíveis (usa getDoctorForTimeSlot declarada acima)
+  const getAvailableInsurances = useCallback((): string[] => {
     const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
-    console.log('getAvailableInsurances doctor:', doctor);
     return doctor ? doctor.insurances : [];
-  };
+  }, [selectedDoctor, selectedTime, getDoctorForTimeSlot]);
+
+  // Função para obter horários disponíveis
+  const getAvailableTimeSlots = useCallback((date: string): TimeSlot[] => {
+    if (selectedDoctor) {
+      const dayName = getDayName(date);
+      const workingHours = selectedDoctor.workingHours.find(wh => wh.day === dayName);
+      
+      return workingHours
+        ? generateTimeSlots(workingHours, date, state.appointments || [], selectedDoctor.id)
+        : [];
+    }
+
+    if (selectedSpecialty) {
+      const doctors = state.doctors.filter(d => d.specialtyId === selectedSpecialty.id);
+      const allSlots: TimeSlot[] = [];
+      
+      doctors.forEach(doctor => {
+        const dayName = getDayName(date);
+        const workingHours = doctor.workingHours.find(wh => wh.day === dayName);
+        
+        if (workingHours) {
+          const slots = generateTimeSlots(
+            workingHours, 
+            date, 
+            state.appointments || [], 
+            doctor.id
+          );
+          allSlots.push(...slots);
+        }
+      });
+      
+      return allSlots.sort((a, b) => a.time.localeCompare(b.time));
+    }
+    
+    return [];
+  }, [selectedDoctor, selectedSpecialty, state.doctors, state.appointments]);
+
+  // Efeito para calcular datas disponíveis
+  useEffect(() => {
+    const calculateAvailableDates = () => {
+      const availableDates = getNextBusinessDays(14);
+      const filteredDates = availableDates.filter((date) => {
+        const slots = getAvailableTimeSlots(date);
+        return slots.some((slot) => slot.available);
+      });
+      setDatesWithAvailableDoctors(filteredDates);
+    };
+
+    calculateAvailableDates();
+  }, [selectedDoctor, selectedSpecialty, state.doctors, state.appointments, getAvailableTimeSlots]);
+
+  // Verificação de carregamento
+  if (state.isLoading || !state.doctors.length) {
+    return <div className="text-center py-10">Carregando dados...</div>;
+  }
 
   const handleConfirmAppointment = async () => {
     const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
     if (!doctor) return;
 
     try {
-      const userData = await supabaseLib.inserirUsuario(patientData.name, patientData.birthDate, patientData.city, patientData.phone);
+      const userData = await supabaseLib.inserirUsuario(
+        patientData.name,
+        patientData.birthDate,
+        patientData.city,
+        patientData.phone
+      );
+      
       const newAppointment: Appointment = {
         id: Date.now().toString(),
         doctorId: doctor.id,
@@ -172,10 +159,11 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         selectedTime,
         selectedInsurance
       );
+      
       dispatch({ type: 'ADD_APPOINTMENT', payload: newAppointment });
       setShowSuccess(true);
     } catch (error) {
-      console.error('Erro ao confirmar agendamento:', error instanceof Error ? error.message : error);
+      console.error('Erro ao confirmar agendamento:', error);
     }
   };
 
@@ -185,6 +173,13 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   };
 
   if (showSuccess) {
+    const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
+    const specialtyName = selectedSpecialty?.name || 
+      state.specialties.find(s => s.id === doctor?.specialtyId)?.name;
+    const insuranceName = selectedInsurance 
+      ? state.insurances.find(i => i.id === selectedInsurance)?.name 
+      : 'Particular';
+
     return (
       <div className="max-w-2xl mx-auto text-center">
         <div className="bg-white rounded-xl shadow-lg p-8">
@@ -200,10 +195,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             <div className="space-y-2 text-sm text-gray-600">
               <p><strong>Data:</strong> {formatDate(selectedDate)}</p>
               <p><strong>Horário:</strong> {selectedTime}</p>
-              <p><strong>Médico:</strong> {(selectedDoctor || getDoctorForTimeSlot(selectedTime))?.name}</p>
-              <p><strong>Especialidade:</strong> {selectedSpecialty?.name || state.specialties.find(s => s.id === (selectedDoctor || getDoctorForTimeSlot(selectedTime))?.specialtyId)?.name}</p>
+              <p><strong>Médico:</strong> {doctor?.name}</p>
+              <p><strong>Especialidade:</strong> {specialtyName}</p>
               <p><strong>Paciente:</strong> {patientData.name}</p>
-              <p><strong>Convênio:</strong> {selectedInsurance ? state.insurances.find(i => i.id === selectedInsurance)?.name : 'Particular'}</p>
+              <p><strong>Convênio:</strong> {insuranceName}</p>
             </div>
           </div>
           <div className="flex space-x-4 justify-center">
@@ -230,31 +225,48 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold text-gray-800 mb-2">Finalizar Agendamento</h2>
         <p className="text-gray-600">
-          {selectedDoctor ? `Agendamento com ${selectedDoctor.name}` : `Agendamento para ${selectedSpecialty?.name}`}
+          {selectedDoctor 
+            ? `Agendamento com ${selectedDoctor.name}` 
+            : `Agendamento para ${selectedSpecialty?.name}`
+          }
         </p>
       </div>
+      
+      {/* Indicador de passos */}
       <div className="flex justify-center mb-8">
         <div className="flex space-x-4">
-          <div className={`flex items-center ${currentStep === 'datetime' ? 'text-blue-600' : currentStep === 'patient' || currentStep === 'confirmation' ? 'text-green-600' : 'text-gray-400'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'datetime' ? 'bg-blue-600 text-white' : currentStep === 'patient' || currentStep === 'confirmation' ? 'bg-green-600 text-white' : 'bg-gray-300'}`}>
-              1
-            </div>
-            <span className="ml-2 text-sm font-medium">Data e Horário</span>
-          </div>
-          <div className={`flex items-center ${currentStep === 'patient' ? 'text-blue-600' : currentStep === 'confirmation' ? 'text-green-600' : 'text-gray-400'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'patient' ? 'bg-blue-600 text-white' : currentStep === 'confirmation' ? 'bg-green-600 text-white' : 'bg-gray-300'}`}>
-              2
-            </div>
-            <span className="ml-2 text-sm font-medium">Dados Pessoais</span>
-          </div>
-          <div className={`flex items-center ${currentStep === 'confirmation' ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'confirmation' ? 'bg-blue-600 text-white' : 'bg-gray-300'}`}>
-              3
-            </div>
-            <span className="ml-2 text-sm font-medium">Confirmação</span>
-          </div>
+          {['datetime', 'patient', 'confirmation'].map((step, index) => {
+            const isCurrent = currentStep === step;
+            const isCompleted = 
+              (step === 'datetime' && currentStep !== 'datetime') ||
+              (step === 'patient' && currentStep === 'confirmation');
+            
+            return (
+              <div 
+                key={step} 
+                className={`flex items-center ${
+                  isCurrent ? 'text-blue-600' : 
+                  isCompleted ? 'text-green-600' : 'text-gray-400'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  isCurrent ? 'bg-blue-600 text-white' : 
+                  isCompleted ? 'bg-green-600 text-white' : 'bg-gray-300'
+                }`}>
+                  {index + 1}
+                </div>
+                <span className="ml-2 text-sm font-medium">
+                  {step === 'datetime' && 'Data e Horário'}
+                  {step === 'patient' && 'Dados Pessoais'}
+                  {step === 'confirmation' && 'Confirmação'}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
+      
+      {/* Conteúdo do formulário */}
       <div className="bg-white rounded-xl shadow-lg p-8">
         {currentStep === 'datetime' && (
           <div className="space-y-6">
@@ -279,6 +291,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                 ))}
               </div>
             </div>
+            
             {selectedDate && (
               <div>
                 <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
@@ -309,6 +322,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                 )}
               </div>
             )}
+            
             {selectedDate && selectedTime && (
               <div className="flex justify-end">
                 <button
@@ -321,12 +335,14 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             )}
           </div>
         )}
+        
         {currentStep === 'patient' && (
           <div className="space-y-6">
             <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
               <User className="w-5 h-5 mr-2" />
               Dados Pessoais
             </h3>
+            
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -353,6 +369,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                 />
               </div>
             </div>
+            
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -379,6 +396,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                 />
               </div>
             </div>
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Cidade *
@@ -391,6 +409,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                 required
               />
             </div>
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Convênio
@@ -403,14 +422,15 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                 <option value="">Particular</option>
                 {getAvailableInsurances().map(insuranceId => {
                   const insurance = state.insurances.find(i => i.id === insuranceId);
-                  return (
+                  return insurance ? (
                     <option key={insuranceId} value={insuranceId}>
-                      {insurance?.name}
+                      {insurance.name}
                     </option>
-                  );
+                  ) : null;
                 })}
               </select>
             </div>
+            
             <div className="flex justify-between">
               <button
                 onClick={() => setCurrentStep('datetime')}
@@ -428,12 +448,14 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             </div>
           </div>
         )}
+        
         {currentStep === 'confirmation' && (
           <div className="space-y-6">
             <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
               <CheckCircle className="w-5 h-5 mr-2" />
               Confirmar Agendamento
             </h3>
+            
             <div className="bg-gray-50 p-6 rounded-lg">
               <h4 className="font-semibold text-gray-800 mb-4">Detalhes do Agendamento:</h4>
               <div className="grid md:grid-cols-2 gap-4 text-sm">
@@ -441,16 +463,24 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                   <p><strong>Data:</strong> {formatDate(selectedDate)}</p>
                   <p><strong>Horário:</strong> {selectedTime}</p>
                   <p><strong>Médico:</strong> {(selectedDoctor || getDoctorForTimeSlot(selectedTime))?.name}</p>
-                  <p><strong>Especialidade:</strong> {selectedSpecialty?.name || state.specialties.find(s => s.id === (selectedDoctor || getDoctorForTimeSlot(selectedTime))?.specialtyId)?.name}</p>
+                  <p><strong>Especialidade:</strong> {
+                    selectedSpecialty?.name || 
+                    state.specialties.find(s => s.id === (selectedDoctor || getDoctorForTimeSlot(selectedTime))?.specialtyId)?.name
+                  }</p>
                 </div>
                 <div>
                   <p><strong>Paciente:</strong> {patientData.name}</p>
                   <p><strong>Telefone:</strong> {patientData.phone}</p>
                   <p><strong>Email:</strong> {patientData.email}</p>
-                  <p><strong>Convênio:</strong> {selectedInsurance ? state.insurances.find(i => i.id === selectedInsurance)?.name : 'Particular'}</p>
+                  <p><strong>Convênio:</strong> {
+                    selectedInsurance 
+                      ? state.insurances.find(i => i.id === selectedInsurance)?.name 
+                      : 'Particular'
+                  }</p>
                 </div>
               </div>
             </div>
+            
             <div className="flex justify-between">
               <button
                 onClick={() => setCurrentStep('patient')}
