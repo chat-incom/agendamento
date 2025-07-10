@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Activity, User, Search } from 'lucide-react';
-import { Specialty } from '../../types';
+import { Specialty } from '../../types/index';
+import { supabase } from '../lib/supabase';
 
 interface SpecialtySelectionProps {
   onSpecialtySelect: (specialty: Specialty) => void;
