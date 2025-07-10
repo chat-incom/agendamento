@@ -30,7 +30,7 @@ const DoctorSelection: React.FC<DoctorSelectionProps> = ({ onDoctorSelect, onBac
     );
   };
 
-  const getWorkingDaysText = (workingHours: any[]) => {
+  const getWorkingDaysText = (workingHours: unknown[]) => {
     if (workingHours.length === 0) return 'Horários não definidos';
 
     const dayNames: { [key: string]: string } = {
