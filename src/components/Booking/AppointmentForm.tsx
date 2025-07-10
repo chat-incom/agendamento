@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Calendar, Clock, User, Phone, Mail, MapPin, Shield, CheckCircle } from 'lucide-react';
 import { Doctor, Specialty, Patient, Appointment, TimeSlot } from '../../types';
@@ -23,7 +23,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   onTimeSelect,
   onBack,
 }) => {
-  const { state, dispatch } = useApp();
+  const { state, dispatch } = useApp() || { state: { doctors: [], appointments: [], specialties: [], insurances: [] }, dispatch: () => {} }; // Fallback
   const [currentStep, setCurrentStep] = useState<'datetime' | 'patient' | 'confirmation'>('datetime');
   const [selectedInsurance, setSelectedInsurance] = useState<string>('');
   const [patientData, setPatientData] = useState<Patient>({
@@ -33,71 +33,56 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     phone: '',
     email: '',
   });
+  const [datesWithAvailableDoctors, setDatesWithAvailableDoctors] = useState<string[]>([]);
+  const [showSuccess, setShowSuccess] = useState(false);
 
- const getAvailableTimeSlots = (date: string): TimeSlot[] => {
-  if (selectedDoctor) {
-    const dayName = getDayName(date);
-    const workingHours = selectedDoctor.workingHours.find(wh => wh.day === dayName);
-    if (!workingHours) return [];
-
-    return generateTimeSlots(workingHours, date, state.appointments, selectedDoctor.id);
-  } else if (selectedSpecialty) {
-    // Get all doctors with this specialty
-    const doctors = state.doctors.filter(d => d.specialtyId === selectedSpecialty.id);
-    const allSlots: TimeSlot[] = [];
-
-    doctors.forEach(doctor => {
-      const dayName = getDayName(date);
-      const workingHours = doctor.workingHours.find(wh => wh.day === dayName);
-      if (workingHours) {
-        const slots = generateTimeSlots(workingHours, date, state.appointments, doctor.id);
-        allSlots.push(...slots);
-      }
+  // Calcula datas disponíveis quando os dados mudarem
+  useEffect(() => {
+    const availableDates = getNextBusinessDays(14);
+    const filteredDates = availableDates.filter(date => {
+      return getAvailableTimeSlots(date).some(slot => slot.available);
     });
+    setDatesWithAvailableDoctors(filteredDates);
+  }, [selectedDoctor, selectedSpecialty, state.doctors, state.appointments]);
 
-    return allSlots.sort((a, b) => a.time.localeCompare(b.time));
-  }
+  const getAvailableTimeSlots = (date: string): TimeSlot[] => {
+    if (selectedDoctor) {
+      const dayName = getDayName(date);
+      const workingHours = selectedDoctor.workingHours.find(wh => wh.day === dayName);
+      if (!workingHours) return [];
+      return generateTimeSlots(workingHours, date, state.appointments || [], selectedDoctor.id);
+    } else if (selectedSpecialty) {
+      const doctors = state.doctors?.filter(d => d.specialtyId === selectedSpecialty.id) || [];
+      const allSlots: TimeSlot[] = [];
+      doctors.forEach(doctor => {
+        const dayName = getDayName(date);
+        const workingHours = doctor.workingHours.find(wh => wh.day === dayName);
+        if (workingHours) {
+          const slots = generateTimeSlots(workingHours, date, state.appointments || [], doctor.id);
+          allSlots.push(...slots);
+        }
+      });
+      return allSlots.sort((a, b) => a.time.localeCompare(b.time));
+    }
+    return [];
+  };
 
-  return [];
-};
-
-const availableDates = getNextBusinessDays(14);
-
-// Agora a função já foi declarada antes do uso
-const datesWithAvailableDoctors = availableDates.filter(date => {
-  return getAvailableTimeSlots(date).some(slot => slot.available);
-});
-
-const [showSuccess, setShowSuccess] = useState(false);
-
-
- const getDoctorForTimeSlot = (time: string): Doctor | null => {
-  if (selectedDoctor) return selectedDoctor;
-
-  if (selectedSpecialty && selectedDate) {
-    const doctors = state.doctors?.filter((doctor) => {
-      return doctor.specialtyId === selectedSpecialty.id;
-    }) ?? [];
-
-    for (const doctor of doctors) {
-      const dayName = getDayName(selectedDate);
-      const workingHours = doctor.workingHours.find((wh) => wh.day === dayName);
-      if (workingHours) {
-        const slots = generateTimeSlots(
-          workingHours,
-          selectedDate,
-          state.appointments,
-          doctor.id
-        );
-        const availableSlot = slots.find((s) => s.time === time && s.available);
-        if (availableSlot) return doctor;
+  const getDoctorForTimeSlot = (time: string): Doctor | null => {
+    if (selectedDoctor) return selectedDoctor;
+    if (selectedSpecialty && selectedDate) {
+      const doctors = state.doctors?.filter(doctor => doctor.specialtyId === selectedSpecialty.id) || [];
+      for (const doctor of doctors) {
+        const dayName = getDayName(selectedDate);
+        const workingHours = doctor.workingHours.find(wh => wh.day === dayName);
+        if (workingHours) {
+          const slots = generateTimeSlots(workingHours, selectedDate, state.appointments || [], doctor.id);
+          const availableSlot = slots.find(s => s.time === time && s.available);
+          if (availableSlot) return doctor;
+        }
       }
     }
-  }
-
-  return null;
-};
-
+    return null;
+  };
 
   const getAvailableInsurances = (): string[] => {
     const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
@@ -139,7 +124,6 @@ const [showSuccess, setShowSuccess] = useState(false);
           <p className="text-gray-600 mb-6">
             Seu agendamento foi confirmado com sucesso. Você receberá um email de confirmação em breve.
           </p>
-          
           <div className="bg-gray-50 p-4 rounded-lg mb-6 text-left">
             <h3 className="font-semibold text-gray-800 mb-2">Detalhes do Agendamento:</h3>
             <div className="space-y-2 text-sm text-gray-600">
@@ -151,7 +135,6 @@ const [showSuccess, setShowSuccess] = useState(false);
               <p><strong>Convênio:</strong> {selectedInsurance ? state.insurances.find(i => i.id === selectedInsurance)?.name : 'Particular'}</p>
             </div>
           </div>
-
           <div className="flex space-x-4 justify-center">
             <button
               onClick={handleBackToBooking}
@@ -179,8 +162,6 @@ const [showSuccess, setShowSuccess] = useState(false);
           {selectedDoctor ? `Agendamento com ${selectedDoctor.name}` : `Agendamento para ${selectedSpecialty?.name}`}
         </p>
       </div>
-
-      {/* Step Progress */}
       <div className="flex justify-center mb-8">
         <div className="flex space-x-4">
           <div className={`flex items-center ${currentStep === 'datetime' ? 'text-blue-600' : currentStep === 'patient' || currentStep === 'confirmation' ? 'text-green-600' : 'text-gray-400'}`}>
@@ -203,8 +184,6 @@ const [showSuccess, setShowSuccess] = useState(false);
           </div>
         </div>
       </div>
-
-      {/* Step Content */}
       <div className="bg-white rounded-xl shadow-lg p-8">
         {currentStep === 'datetime' && (
           <div className="space-y-6">
@@ -229,7 +208,6 @@ const [showSuccess, setShowSuccess] = useState(false);
                 ))}
               </div>
             </div>
-
             {selectedDate && (
               <div>
                 <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
@@ -260,7 +238,6 @@ const [showSuccess, setShowSuccess] = useState(false);
                 )}
               </div>
             )}
-
             {selectedDate && selectedTime && (
               <div className="flex justify-end">
                 <button
@@ -273,14 +250,12 @@ const [showSuccess, setShowSuccess] = useState(false);
             )}
           </div>
         )}
-
         {currentStep === 'patient' && (
           <div className="space-y-6">
             <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
               <User className="w-5 h-5 mr-2" />
               Dados Pessoais
             </h3>
-
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -307,7 +282,6 @@ const [showSuccess, setShowSuccess] = useState(false);
                 />
               </div>
             </div>
-
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -334,7 +308,6 @@ const [showSuccess, setShowSuccess] = useState(false);
                 />
               </div>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Cidade *
@@ -347,7 +320,6 @@ const [showSuccess, setShowSuccess] = useState(false);
                 required
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Convênio
@@ -368,7 +340,6 @@ const [showSuccess, setShowSuccess] = useState(false);
                 })}
               </select>
             </div>
-
             <div className="flex justify-between">
               <button
                 onClick={() => setCurrentStep('datetime')}
@@ -386,14 +357,12 @@ const [showSuccess, setShowSuccess] = useState(false);
             </div>
           </div>
         )}
-
         {currentStep === 'confirmation' && (
           <div className="space-y-6">
             <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
               <CheckCircle className="w-5 h-5 mr-2" />
               Confirmar Agendamento
             </h3>
-
             <div className="bg-gray-50 p-6 rounded-lg">
               <h4 className="font-semibold text-gray-800 mb-4">Detalhes do Agendamento:</h4>
               <div className="grid md:grid-cols-2 gap-4 text-sm">
@@ -411,7 +380,6 @@ const [showSuccess, setShowSuccess] = useState(false);
                 </div>
               </div>
             </div>
-
             <div className="flex justify-between">
               <button
                 onClick={() => setCurrentStep('patient')}
