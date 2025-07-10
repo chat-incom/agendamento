@@ -9,7 +9,7 @@ export function generateTimeSlots(
   const slots: TimeSlot[] = [];
 
   // Validações básicas
-  if (!workingHours.start || !workingHours.end || !date) {
+  if (!workingHours?.start || !workingHours?.end || !date) {
     throw new Error('Invalid input: start, end, or date is missing');
   }
 
@@ -36,15 +36,12 @@ export function generateTimeSlots(
 
   let current = new Date(startTime);
 
-  // Loop até antes do horário final
   while (current < endTime) {
     const time = current.toTimeString().slice(0, 5); // Formato HH:MM
 
-    // Verifica se o horário está ocupado
-    const isTaken = Array.isArray(appointments) && appointments.some(
-      (appt) =>
-        appt.date === date && appt.time === time && appt.doctorId === doctorId
-    );
+    const isTaken = Array.isArray(appointments) ? appointments.some(
+      (appt) => appt.date === date && appt.time === time && appt.doctorId === doctorId
+    ) : false;
 
     slots.push({
       doctorId,
