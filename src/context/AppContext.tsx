@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { Doctor, Specialty, Insurance, Appointment } from '../types';
-import * as db from '../services/database';
+import * as supabaseLib from '../lib/supabase';
 
 interface AppState {
   specialties: Specialty[];
@@ -16,7 +16,7 @@ type AppAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'LOAD_DATA'; payload: { specialties: Specialty[]; doctors: Doctor[]; insurances: Insurance[]; appointments: Appointment[] } }
   | { type: 'SET_VIEW'; payload: 'login' | 'admin' | 'booking' }
-  | { type: 'LOGIN' }
+  | { type: 'LOGIN'; payload?: string }
   | { type: 'LOGOUT' }
   | { type: 'ADD_SPECIALTY'; payload: Specialty }
   | { type: 'ADD_DOCTOR'; payload: Doctor }
@@ -52,28 +52,38 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'LOGOUT':
       return { ...state, isLoggedIn: false, currentView: 'login' };
     case 'ADD_SPECIALTY':
-      db.addSpecialty(action.payload).catch(err => {
-        console.warn('Failed to save specialty to database:', err.message);
+      supabaseLib.inserirEspecialidade(action.payload.name).catch(err => {
+        console.warn('Failed to save specialty:', err.message);
       });
       return { ...state, specialties: [...state.specialties, action.payload] };
     case 'ADD_DOCTOR':
-      db.addDoctor(action.payload).catch(err => {
-        console.warn('Failed to save doctor to database:', err.message);
+      supabaseLib.inserirMedico(action.payload.name, action.payload.crm, action.payload.specialtyId).catch(err => {
+        console.warn('Failed to save doctor:', err.message);
       });
       return { ...state, doctors: [...state.doctors, action.payload] };
     case 'ADD_INSURANCE':
-      db.addInsurance(action.payload).catch(err => {
-        console.warn('Failed to save insurance to database:', err.message);
+      supabaseLib.inserirConvenio(action.payload.name).catch(err => {
+        console.warn('Failed to save insurance:', err.message);
       });
       return { ...state, insurances: [...state.insurances, action.payload] };
     case 'ADD_APPOINTMENT':
-      db.addAppointment(action.payload).catch(err => {
-        console.warn('Failed to save appointment to database:', err.message);
+      supabaseLib.inserirAgendamento(
+        '', // Placeholder para usuario_id, deve ser obtido dinamicamente
+        action.payload.doctorId,
+        action.payload.date,
+        action.payload.time,
+        action.payload.insuranceId
+      ).catch(err => {
+        console.warn('Failed to save appointment:', err.message);
       });
       return { ...state, appointments: [...state.appointments, action.payload] };
     case 'UPDATE_DOCTOR':
-      db.updateDoctor(action.payload).catch(err => {
-        console.warn('Failed to update doctor in database:', err.message);
+      supabaseLib.atualizarMedico(action.payload.id, {
+        nome: action.payload.name,
+        crm: action.payload.crm,
+        especialidade_id: action.payload.specialtyId,
+      }).catch(err => {
+        console.warn('Failed to update doctor:', err.message);
       });
       return {
         ...state,
@@ -82,8 +92,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ),
       };
     case 'UPDATE_SPECIALTY':
-      db.updateSpecialty(action.payload).catch(err => {
-        console.warn('Failed to update specialty in database:', err.message);
+      supabaseLib.atualizarEspecialidade(action.payload.id, action.payload.name).catch(err => {
+        console.warn('Failed to update specialty:', err.message);
       });
       return {
         ...state,
@@ -92,8 +102,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ),
       };
     case 'UPDATE_INSURANCE':
-      db.updateInsurance(action.payload).catch(err => {
-        console.warn('Failed to update insurance in database:', err.message);
+      supabaseLib.atualizarConvenio(action.payload.id, action.payload.name).catch(err => {
+        console.warn('Failed to update insurance:', err.message);
       });
       return {
         ...state,
@@ -102,24 +112,24 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
         ),
       };
     case 'DELETE_DOCTOR':
-      db.deleteDoctor(action.payload).catch(err => {
-        console.warn('Failed to delete doctor from database:', err.message);
+      supabaseLib.deletarMedico(action.payload).catch(err => {
+        console.warn('Failed to delete doctor:', err.message);
       });
       return {
         ...state,
         doctors: state.doctors.filter(doctor => doctor.id !== action.payload),
       };
     case 'DELETE_SPECIALTY':
-      db.deleteSpecialty(action.payload).catch(err => {
-        console.warn('Failed to delete specialty from database:', err.message);
+      supabaseLib.deletarEspecialidade(action.payload).catch(err => {
+        console.warn('Failed to delete specialty:', err.message);
       });
       return {
         ...state,
         specialties: state.specialties.filter(specialty => specialty.id !== action.payload),
       };
     case 'DELETE_INSURANCE':
-      db.deleteInsurance(action.payload).catch(err => {
-        console.warn('Failed to delete insurance from database:', err.message);
+      supabaseLib.deletarConvenio(action.payload).catch(err => {
+        console.warn('Failed to delete insurance:', err.message);
       });
       return {
         ...state,
@@ -147,28 +157,58 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.log('Iniciando carregamento de dados do Supabase...');
 
       try {
-        const [specialties, doctors, insurances, appointments] = await Promise.all([
-          db.getSpecialties(),
-          db.getDoctors(),
-          db.getInsurances(),
-          db.getAppointments()
+        const [specialties, insurances, doctors, appointments] = await Promise.all([
+          supabaseLib.listarEspecialidades(),
+          supabaseLib.listarConvenios(),
+          supabaseLib.listarMedicos(),
+          supabaseLib.listarAgendamentos(''), // Ajuste para um ID de usuário válido ou remova
         ]);
 
-        console.log('Dados carregados com sucesso:', { specialties, doctors, insurances, appointments });
+        console.log('Dados carregados com sucesso:', { specialties, insurances, doctors, appointments });
         dispatch({
           type: 'LOAD_DATA',
-          payload: { specialties, doctors, insurances, appointments }
+          payload: {
+            specialties: specialties.map(s => ({
+              id: s.id,
+              name: s.nome,
+              description: s.nome, // Ajuste se houver campo de descrição
+              createdAt: new Date(),
+            })),
+            insurances: insurances.map(i => ({
+              id: i.id,
+              name: i.nome,
+              type: 'private', // Ajuste se o tipo estiver no banco
+            })),
+            doctors: doctors.map(d => ({
+              id: d.id,
+              name: d.nome,
+              crm: d.crm,
+              specialtyId: d.especialidade_id,
+              insurances: [], // Ajuste para buscar medico_convenios
+              workingHours: [], // Ajuste para buscar agenda
+              createdAt: new Date(),
+            })),
+            appointments: appointments.map(a => ({
+              id: a.id,
+              doctorId: a.medico_id,
+              date: a.data,
+              time: a.horario,
+              patient: { name: '', birthDate: '', city: '', phone: '', email: '' }, // Ajuste para mapear usuarios
+              insuranceId: a.convenio_id,
+              status: 'scheduled',
+              createdAt: new Date(),
+            })),
+          }
         });
       } catch (error) {
         console.error('Erro ao carregar dados do Supabase:', error instanceof Error ? error.message : error);
-        // Fallback para dados iniciais em caso de erro
         dispatch({
           type: 'LOAD_DATA',
           payload: {
             specialties: initialState.specialties,
             doctors: initialState.doctors,
             insurances: initialState.insurances,
-            appointments: initialState.appointments
+            appointments: initialState.appointments,
           }
         });
       } finally {
