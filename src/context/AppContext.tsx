@@ -10,12 +10,12 @@ interface AppState {
   isLoggedIn: boolean;
   currentView: 'login' | 'admin' | 'booking';
   isLoading: boolean;
-  userId: string;
+  userId: string | null;
 }
 
 type AppAction =
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'LOAD_DATA'; payload: { specialties: Specialty[]; doctors: Doctor[]; insurances: Insurance[]; appointments: Appointment[]; userId: string } }
+  | { type: 'LOAD_DATA'; payload: { specialties: Specialty[]; doctors: Doctor[]; insurances: Insurance[]; appointments: Appointment[]; userId: string | null } }
   | { type: 'SET_VIEW'; payload: 'login' | 'admin' | 'booking' }
   | { type: 'LOGIN'; payload: string }
   | { type: 'LOGOUT' }
@@ -38,7 +38,7 @@ const initialState: AppState = {
   isLoggedIn: false,
   currentView: 'login',
   isLoading: false,
-  userId: '',
+  userId: null,
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
@@ -60,7 +60,7 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'LOGIN':
       return { ...state, isLoggedIn: true, currentView: 'admin', userId: action.payload };
     case 'LOGOUT':
-      return { ...state, isLoggedIn: false, currentView: 'login', userId: '' };
+      return { ...state, isLoggedIn: false, currentView: 'login', userId: null };
     case 'ADD_SPECIALTY':
       return { ...state, specialties: [...state.specialties, action.payload] };
     case 'ADD_DOCTOR':
@@ -68,6 +68,13 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'ADD_INSURANCE':
       return { ...state, insurances: [...state.insurances, action.payload] };
     case 'ADD_APPOINTMENT':
+      supabaseLib.inserirAgendamento(
+        state.userId ?? null,
+        action.payload.doctorId,
+        action.payload.date,
+        action.payload.time,
+        action.payload.insuranceId
+      ).catch(console.warn);
       return { ...state, appointments: [...state.appointments, action.payload] };
     case 'UPDATE_DOCTOR':
       return {
@@ -119,8 +126,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const loadData = async () => {
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
-        const user = await supabaseLib.getUser();
-        const userId = user.id;
+        const user = await supabaseLib.getUser().catch(() => null);
+        const userId = user?.id ?? null;
 
         const [specialties, insurances, doctors, appointments, horarios, medicoConvenios] =
           await Promise.all([
@@ -208,4 +215,5 @@ export const useApp = () => {
   }
   return context;
 };
+
 
