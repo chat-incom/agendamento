@@ -48,64 +48,86 @@ const BookingSystem: React.FC = () => {
     dispatch({ type: 'SET_VIEW', payload: 'login' });
   };
 
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 'selection':
-        return (
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <div className="bg-blue-600 p-4 rounded-full mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-                <Calendar className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-4xl font-bold text-gray-800 mb-4">Agendar Consulta</h1>
-              <p className="text-xl text-gray-600">Como você gostaria de agendar sua consulta?</p>
+ const renderStepContent = () => {
+  console.log('Renderizando passo:', currentStep);
+
+  switch (currentStep) {
+    case 'selection':
+      return (
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="bg-blue-600 p-4 rounded-full mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+              <Calendar className="w-8 h-8 text-white" />
             </div>
+            <h1 className="text-4xl font-bold text-gray-800 mb-4">Agendar Consulta</h1>
+            <p className="text-xl text-gray-600">Como você gostaria de agendar sua consulta?</p>
+          </div>
 
-            <div className="grid md:grid-cols-2 gap-8 mb-12">
-              <div
-                onClick={() => handleStepChange('doctor')}
-                className="bg-white rounded-2xl shadow-lg p-8 cursor-pointer hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-transparent hover:border-blue-500"
-              >
-                <div className="text-center">
-                  <div className="bg-blue-100 p-4 rounded-full mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-                    <User className="w-8 h-8 text-blue-600" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-gray-800 mb-4">Por Médico</h3>
-                  <p className="text-gray-600 mb-6">
-                    Escolha diretamente o médico de sua preferência e veja os horários disponíveis
-                  </p>
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm text-blue-700">
-                      ✓ Veja os convênios aceitos<br />
-                      ✓ Horários personalizados<br />
-                      ✓ Especialidade do médico
-                    </p>
-                  </div>
+          <div className="grid md:grid-cols-2 gap-8 mb-12">
+            <div
+              onClick={() => handleStepChange('doctor')}
+              className="bg-white rounded-2xl shadow-lg p-8 cursor-pointer hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-transparent hover:border-blue-500"
+            >
+              <div className="text-center">
+                <div className="bg-blue-100 p-4 rounded-full mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+                  <User className="w-8 h-8 text-blue-600" />
                 </div>
-              </div>
-
-              <div
-                onClick={() => handleStepChange('specialty')}
-                className="bg-white rounded-2xl shadow-lg p-8 cursor-pointer hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-transparent hover:border-green-500"
-              >
-                <div className="text-center">
-                  <div className="bg-green-100 p-4 rounded-full mx-auto mb-4 w-16 h-16 flex items-center justify-center">
-                    <Activity className="w-8 h-8 text-green-600" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-gray-800 mb-4">Por Especialidade</h3>
-                  <p className="text-gray-600 mb-6">
-                    Escolha a especialidade e veja todos os horários disponíveis de todos os médicos
+                <h3 className="text-2xl font-bold text-gray-800 mb-4">Por Médico</h3>
+                <p className="text-gray-600 mb-6">
+                  Escolha diretamente o médico de sua preferência e veja os horários disponíveis
+                </p>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    ✓ Veja os convênios aceitos<br />
+                    ✓ Horários personalizados<br />
+                    ✓ Especialidade do médico
                   </p>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <p className="text-sm text-green-700">
-                      ✓ Mais opções de horários<br />
-                      ✓ Todos os médicos da especialidade<br />
-                      ✓ Comparação de convênios
-                    </p>
-                  </div>
                 </div>
               </div>
             </div>
+
+            <div
+              onClick={() => handleStepChange('specialty')}
+              className="bg-white rounded-2xl shadow-lg p-8 cursor-pointer hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-2 border-transparent hover:border-green-500"
+            >
+              <div className="text-center">
+                <div className="bg-green-100 p-4 rounded-full mx-auto mb-4 w-16 h-16 flex items-center justify-center">
+                  <Activity className="w-8 h-8 text-green-600" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-4">Por Especialidade</h3>
+                <p className="text-gray-600 mb-6">
+                  Escolha a especialidade e veja todos os horários disponíveis de todos os médicos
+                </p>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <p className="text-sm text-green-700">
+                    ✓ Mais opções de horários<br />
+                    ✓ Todos os médicos da especialidade<br />
+                    ✓ Comparação de convênios
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+
+    case 'doctor':
+      return <DoctorSelection onDoctorSelect={handleDoctorSelect} />;
+
+    case 'specialty':
+      return <SpecialtySelection onSpecialtySelect={handleSpecialtySelect} />;
+
+    case 'form':
+      return <AppointmentForm doctor={selectedDoctor} />;
+
+    default:
+      return (
+        <div className="text-center text-red-600 mt-10">
+          Etapa não reconhecida: <strong>{currentStep}</strong>
+        </div>
+      );
+  }
+};
 
             <div className="bg-white rounded-xl shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
