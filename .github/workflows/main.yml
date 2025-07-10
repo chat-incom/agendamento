@@ -1,0 +1,32 @@
+name: Verificação de Código
+
+on:
+  pull_request:
+    branches: [main] # ou sua branch principal
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar ESLint
+        run: npm run lint
+
+      - name: Checar erros de TypeScript
+        run: npx tsc --noEmit
+
+      - name: Rodar testes
+        run: npm test
