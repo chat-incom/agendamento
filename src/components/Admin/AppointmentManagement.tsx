@@ -1,10 +1,91 @@
-import React from 'react';
-import { useApp } from '../../context/AppContext';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabaseClient';
 import { Calendar, Clock, User, Shield, CheckCircle, XCircle } from 'lucide-react';
 import { formatDate, formatTime } from '../../utils/timeUtils';
 
+type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled';
+
+interface Appointment {
+  id: string;
+  data: string;
+  horario: string;
+  status: AppointmentStatus;
+  convenio_id: string | null;
+  medico_id: string;
+  usuario_id: string;
+  criado_em?: string;
+  paciente: {
+    nome: string;
+    contato: string;
+    cidade: string;
+  };
+  medico: {
+    nome: string;
+    especialidade: {
+      nome: string;
+    };
+  };
+  convenio?: {
+    nome: string;
+  };
+}
+
 const AppointmentManagement: React.FC = () => {
-  const { state } = useApp();
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadAppointments = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('agendamentos')
+      .select(`
+        id, data, horario, status, criado_em,
+        usuario_id,
+        medico_id,
+        convenio_id,
+        usuarios:usuario_id (nome, contato, cidade),
+        medicos:medico_id (
+          nome,
+          especialidades:especialidade_id (nome)
+        ),
+        convenios:convenio_id (nome)
+      `);
+
+    if (error) {
+      console.error('Erro ao carregar agendamentos:', error.message);
+    } else {
+      const parsed = data.map((item: any) => ({
+        id: item.id,
+        data: item.data,
+        horario: item.horario,
+        status: item.status ?? 'scheduled',
+        convenio_id: item.convenio_id,
+        medico_id: item.medico_id,
+        usuario_id: item.usuario_id,
+        criado_em: item.criado_em,
+        paciente: {
+          nome: item.usuarios?.nome ?? 'Desconhecido',
+          contato: item.usuarios?.contato ?? '-',
+          cidade: item.usuarios?.cidade ?? '-'
+        },
+        medico: {
+          nome: item.medicos?.nome ?? 'Desconhecido',
+          especialidade: {
+            nome: item.medicos?.especialidades?.nome ?? '-'
+          }
+        },
+        convenio: {
+          nome: item.convenios?.nome ?? 'Particular'
+        }
+      }));
+      setAppointments(parsed);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadAppointments();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -45,24 +126,9 @@ const AppointmentManagement: React.FC = () => {
     }
   };
 
-  const getDoctorName = (doctorId: string) => {
-    return state.doctors.find(d => d.id === doctorId)?.name || 'Médico não encontrado';
-  };
-
-  const getSpecialtyName = (doctorId: string) => {
-    const doctor = state.doctors.find(d => d.id === doctorId);
-    if (!doctor) return 'Especialidade não encontrada';
-    return state.specialties.find(s => s.id === doctor.specialtyId)?.name || 'Especialidade não encontrada';
-  };
-
-  const getInsuranceName = (insuranceId?: string) => {
-    if (!insuranceId) return 'Particular';
-    return state.insurances.find(i => i.id === insuranceId)?.name || 'Convênio não encontrado';
-  };
-
-  const scheduledAppointments = state.appointments.filter(a => a.status === 'scheduled');
-  const completedAppointments = state.appointments.filter(a => a.status === 'completed');
-  const cancelledAppointments = state.appointments.filter(a => a.status === 'cancelled');
+  const scheduledAppointments = appointments.filter(a => a.status === 'scheduled');
+  const completedAppointments = appointments.filter(a => a.status === 'completed');
+  const cancelledAppointments = appointments.filter(a => a.status === 'cancelled');
 
   return (
     <div className="space-y-6">
@@ -93,8 +159,10 @@ const AppointmentManagement: React.FC = () => {
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800">Próximos Agendamentos</h3>
         </div>
-        
-        {state.appointments.length === 0 ? (
+
+        {loading ? (
+          <div className="text-center py-12 text-gray-500">Carregando...</div>
+        ) : appointments.length === 0 ? (
           <div className="text-center py-12">
             <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum agendamento encontrado</h3>
@@ -102,8 +170,10 @@ const AppointmentManagement: React.FC = () => {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {state.appointments
-              .sort((a, b) => new Date(a.date + ' ' + a.time).getTime() - new Date(b.date + ' ' + b.time).getTime())
+            {appointments
+              .sort((a, b) =>
+                new Date(a.data + 'T' + a.horario).getTime() - new Date(b.data + 'T' + b.horario).getTime()
+              )
               .map((appointment) => (
                 <div key={appointment.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between">
@@ -115,7 +185,7 @@ const AppointmentManagement: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2">
-                          <h4 className="text-sm font-medium text-gray-900">{appointment.patient.name}</h4>
+                          <h4 className="text-sm font-medium text-gray-900">{appointment.paciente.nome}</h4>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(appointment.status)}`}>
                             {getStatusIcon(appointment.status)}
                             <span className="ml-1">{getStatusText(appointment.status)}</span>
@@ -123,9 +193,9 @@ const AppointmentManagement: React.FC = () => {
                         </div>
                         <div className="mt-1 text-sm text-gray-500">
                           <div className="flex items-center space-x-4">
-                            <span>{getDoctorName(appointment.doctorId)}</span>
+                            <span>{appointment.medico.nome}</span>
                             <span>•</span>
-                            <span>{getSpecialtyName(appointment.doctorId)}</span>
+                            <span>{appointment.medico.especialidade.nome}</span>
                           </div>
                         </div>
                       </div>
@@ -133,24 +203,24 @@ const AppointmentManagement: React.FC = () => {
                     <div className="flex items-center space-x-6">
                       <div className="text-right">
                         <div className="text-sm font-medium text-gray-900">
-                          {formatDate(appointment.date)}
+                          {formatDate(appointment.data)}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {formatTime(appointment.time)}
+                          {formatTime(appointment.horario)}
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm text-gray-900">
-                          {appointment.patient.phone}
+                          {appointment.paciente.contato}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {appointment.patient.city}
+                          {appointment.paciente.cidade}
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="flex items-center text-sm text-gray-900">
                           <Shield className="w-4 h-4 mr-1" />
-                          {getInsuranceName(appointment.insuranceId)}
+                          {appointment.convenio?.nome ?? 'Particular'}
                         </div>
                       </div>
                     </div>
