@@ -1,355 +1,193 @@
-import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
-import { Plus, User, Clock, Shield, Edit, Trash2 } from 'lucide-react';
-import { Doctor, WorkingHours } from '../../types/index';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import { Doctor, Specialty, Insurance, WorkingHours } from '../../types';
 
 const DoctorManagement: React.FC = () => {
-  const { state, dispatch } = useApp();
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [insurances, setInsurances] = useState<Insurance[]>([]);
+
+  const [formData, setFormData] = useState<Omit<Doctor, 'id'>>({
     name: '',
     crm: '',
     specialtyId: '',
-    selectedInsurances: [] as string[],
-    workingHours: [] as WorkingHours[],
+    insurances: [],
+    workingHours: [],
   });
 
-  const defaultWorkingHours: WorkingHours = {
-    day: 'monday',
-    startTime: '08:00',
-    endTime: '17:00',
-    intervalMinutes: 15,
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    await Promise.all([loadDoctors(), loadSpecialties(), loadInsurances()]);
   };
 
-  const [newWorkingHour, setNewWorkingHour] = useState<WorkingHours>(defaultWorkingHours);
-  const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
+  const loadDoctors = async () => {
+    const { data, error } = await supabase.from('medicos').select(`
+      id, nome, crm, especialidade_id,
+      medico_convenios ( convenio_id ),
+      agenda ( dia_semana, horario_inicio, horario_fim, tempo_intervalo )
+    `);
 
-  const dayLabels = {
-    monday: 'Segunda-feira',
-    tuesday: 'Terça-feira',
-    wednesday: 'Quarta-feira',
-    thursday: 'Quinta-feira',
-    friday: 'Sexta-feira',
+    if (!error && data) {
+      const mapped: Doctor[] = data.map((m) => ({
+        id: m.id,
+        name: m.nome,
+        crm: m.crm,
+        specialtyId: m.especialidade_id,
+        insurances: m.medico_convenios.map(mc => mc.convenio_id),
+        workingHours: m.agenda.map((a) => ({
+          day: translateDayToKey(a.dia_semana),
+          startTime: a.horario_inicio,
+          endTime: a.horario_fim,
+          intervalMinutes: a.tempo_intervalo,
+        })),
+      }));
+      setDoctors(mapped);
+    }
+  };
+
+  const loadSpecialties = async () => {
+    const { data } = await supabase.from('especialidades').select('*');
+    if (data) setSpecialties(data);
+  };
+
+  const loadInsurances = async () => {
+    const { data } = await supabase.from('convenios').select('*');
+    if (data) setInsurances(data);
+  };
+
+  const dayLabelsReverse = {
+    monday: 'Segunda',
+    tuesday: 'Terça',
+    wednesday: 'Quarta',
+    thursday: 'Quinta',
+    friday: 'Sexta',
     saturday: 'Sábado',
     sunday: 'Domingo',
   };
 
-  const handleEdit = (doctor: Doctor) => {
-    setEditingDoctor(doctor);
-    setFormData({
-      name: doctor.name,
-      crm: doctor.crm,
-      specialtyId: doctor.specialtyId,
-      selectedInsurances: doctor.insurances,
-      workingHours: doctor.workingHours,
-    });
-    setShowForm(true);
+  const translateDayToKey = (day: string): WorkingHours['day'] => {
+    const mapping = {
+      Segunda: 'monday',
+      Terça: 'tuesday',
+      Quarta: 'wednesday',
+      Quinta: 'thursday',
+      Sexta: 'friday',
+      Sábado: 'saturday',
+      Domingo: 'sunday',
+    };
+    return mapping[day] || 'monday';
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este médico?')) {
-      dispatch({ type: 'DELETE_DOCTOR', payload: id });
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (editingDoctor) {
-      const updatedDoctor: Doctor = {
-        ...editingDoctor,
-        name: formData.name,
+  const handleSave = async () => {
+    if (editingId) {
+      // UPDATE
+      await supabase.from('medicos').update({
+        nome: formData.name,
         crm: formData.crm,
-        specialtyId: formData.specialtyId,
-        insurances: formData.selectedInsurances,
-        workingHours: formData.workingHours,
-      };
+        especialidade_id: formData.specialtyId,
+      }).eq('id', editingId);
 
-      dispatch({ type: 'UPDATE_DOCTOR', payload: updatedDoctor });
+      await supabase.from('medico_convenios').delete().eq('medico_id', editingId);
+      await supabase.from('agenda').delete().eq('medico_id', editingId);
+
+      await Promise.all([
+        supabase.from('medico_convenios').insert(
+          formData.insurances.map((cid) => ({ medico_id: editingId, convenio_id: cid }))
+        ),
+        supabase.from('agenda').insert(
+          formData.workingHours.map((wh) => ({
+            medico_id: editingId,
+            dia_semana: dayLabelsReverse[wh.day],
+            horario_inicio: wh.startTime,
+            horario_fim: wh.endTime,
+            tempo_intervalo: wh.intervalMinutes,
+          }))
+        )
+      ]);
     } else {
-      const newDoctor: Doctor = {
-        id: Date.now().toString(),
-        name: formData.name,
+      // INSERT
+      const { data: medico } = await supabase.from('medicos').insert({
+        nome: formData.name,
         crm: formData.crm,
-        specialtyId: formData.specialtyId,
-        insurances: formData.selectedInsurances,
-        workingHours: formData.workingHours,
-        createdAt: new Date(),
-      };
+        especialidade_id: formData.specialtyId,
+      }).select().single();
 
-      dispatch({ type: 'ADD_DOCTOR', payload: newDoctor });
+      if (medico) {
+        await Promise.all([
+          supabase.from('medico_convenios').insert(
+            formData.insurances.map((cid) => ({ medico_id: medico.id, convenio_id: cid }))
+          ),
+          supabase.from('agenda').insert(
+            formData.workingHours.map((wh) => ({
+              medico_id: medico.id,
+              dia_semana: dayLabelsReverse[wh.day],
+              horario_inicio: wh.startTime,
+              horario_fim: wh.endTime,
+              tempo_intervalo: wh.intervalMinutes,
+            }))
+          )
+        ]);
+      }
     }
 
-    setFormData({ name: '', crm: '', specialtyId: '', selectedInsurances: [], workingHours: [] });
-    setEditingDoctor(null);
     setShowForm(false);
+    setEditingId(null);
+    await loadDoctors();
   };
 
-  const handleInsuranceToggle = (insuranceId: string) => {
-    const updatedInsurances = formData.selectedInsurances.includes(insuranceId)
-      ? formData.selectedInsurances.filter((id) => id !== insuranceId)
-      : [...formData.selectedInsurances, insuranceId];
-
-    setFormData({ ...formData, selectedInsurances: updatedInsurances });
-  };
-
-  const addWorkingHour = () => {
-    if (!formData.workingHours.some((wh) => wh.day === newWorkingHour.day)) {
-      setFormData({
-        ...formData,
-        workingHours: [...formData.workingHours, newWorkingHour],
-      });
-      setNewWorkingHour(defaultWorkingHours);
-    }
-  };
-
-  const removeWorkingHour = (day: string) => {
-    setFormData({
-      ...formData,
-      workingHours: formData.workingHours.filter((wh) => wh.day !== day),
-    });
-  };
-
-  const getSpecialtyName = (specialtyId: string) => {
-    return state.specialties.find((s) => s.id === specialtyId)?.name || 'Especialidade não encontrada';
+  const handleDelete = async (id: string) => {
+    await supabase.from('agenda').delete().eq('medico_id', id);
+    await supabase.from('medico_convenios').delete().eq('medico_id', id);
+    await supabase.from('medicos').delete().eq('id', id);
+    await loadDoctors();
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Médicos</h2>
-          <p className="text-gray-600">Gerencie os médicos da clínica</p>
-        </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Novo Médico</span>
-        </button>
-      </div>
+    <div>
+      <h2 className="text-lg font-semibold mb-4">Gerenciar Médicos</h2>
+      <button onClick={() => setShowForm(true)} className="mb-4 bg-blue-500 text-white px-4 py-2 rounded">
+        Novo Médico
+      </button>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-4">{editingDoctor ? 'Editar Médico' : 'Novo Médico'}</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">CRM</label>
-                  <input
-                    type="text"
-                    value={formData.crm}
-                    onChange={(e) => setFormData({ ...formData, crm: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Especialidade</label>
-                <select
-                  value={formData.specialtyId}
-                  onChange={(e) => setFormData({ ...formData, specialtyId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                >
-                  <option value="">Selecione uma especialidade</option>
-                  {state.specialties.map((specialty) => (
-                    <option key={specialty.id} value={specialty.id}>
-                      {specialty.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Convênios</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {state.insurances.map((insurance) => (
-                    <label key={insurance.id} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.selectedInsurances.includes(insurance.id)}
-                        onChange={() => handleInsuranceToggle(insurance.id)}
-                        className="mr-2"
-                      />
-                      {insurance.name}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                >
-                  Cancelar
-                </button>
-<div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">Horários de Atendimento</label>
-
-  <div className="flex flex-col md:flex-row gap-2 items-center mb-2">
-    <select
-      value={newWorkingHour.day}
-      onChange={(e) => setNewWorkingHour({ ...newWorkingHour, day: e.target.value as WorkingHours['day'] })}
-      className="px-3 py-2 border border-gray-300 rounded-md"
-    >
-      {Object.entries(dayLabels).map(([value, label]) => (
-        <option key={value} value={value}>
-          {label}
-        </option>
-      ))}
-    </select>
-
-    <input
-      type="time"
-      value={newWorkingHour.startTime}
-      onChange={(e) => setNewWorkingHour({ ...newWorkingHour, startTime: e.target.value })}
-      className="px-3 py-2 border border-gray-300 rounded-md"
-    />
-
-    <input
-      type="time"
-      value={newWorkingHour.endTime}
-      onChange={(e) => setNewWorkingHour({ ...newWorkingHour, endTime: e.target.value })}
-      className="px-3 py-2 border border-gray-300 rounded-md"
-    />
-
-    <input
-      type="number"
-      min={1}
-      value={newWorkingHour.intervalMinutes}
-      onChange={(e) => setNewWorkingHour({ ...newWorkingHour, intervalMinutes: Number(e.target.value) })}
-      className="w-24 px-3 py-2 border border-gray-300 rounded-md"
-      placeholder="Intervalo"
-    />
-
-    <button
-      type="button"
-      onClick={addWorkingHour}
-      className="bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700 transition-colors"
-    >
-      Adicionar
-    </button>
-  </div>
-
-  <ul className="list-disc ml-5 space-y-1 text-sm text-gray-700">
-    {formData.workingHours.map((wh) => (
-      <li key={wh.day} className="flex justify-between items-center">
-        <span>
-          {dayLabels[wh.day]}: {wh.startTime} - {wh.endTime} ({wh.intervalMinutes} min)
-        </span>
-        <button
-          type="button"
-          onClick={() => removeWorkingHour(wh.day)}
-          className="text-red-600 text-xs hover:underline"
-        >
-          Remover
-        </button>
-      </li>
-    ))}
-  </ul>
-</div>
-
-                
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  {editingDoctor ? 'Atualizar' : 'Salvar'}
-                </button>
-              </div>
-            </form>
-          </div>
+        <div className="p-4 border rounded bg-white">
+          {/* Campos de formulário (nome, crm, especialidade, convênios, horários) */}
+          {/* ... */}
+          <button onClick={handleSave} className="mt-4 bg-green-500 text-white px-4 py-2 rounded">
+            Salvar
+          </button>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {state.doctors.map((doctor) => (
-          <div key={doctor.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-blue-100 p-2 rounded-lg">
-                  <User className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800">{doctor.name}</h3>
-                  <p className="text-sm text-gray-600">{doctor.crm}</p>
-                </div>
-              </div>
-              <div className="flex space-x-2">
-                <button 
-                  onClick={() => handleEdit(doctor)}
-                  className="text-gray-400 hover:text-blue-600 transition-colors"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => handleDelete(doctor.id)}
-                  className="text-gray-400 hover:text-red-600 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+      <ul className="mt-4">
+        {doctors.map((doctor) => (
+          <li key={doctor.id} className="border-b py-2 flex justify-between">
+            <div>
+              <strong>{doctor.name}</strong> (CRM: {doctor.crm})
             </div>
-            
-            <div className="space-y-3">
-              <div>
-                <span className="text-sm font-medium text-gray-700">Especialidade:</span>
-                <p className="text-sm text-gray-600">{getSpecialtyName(doctor.specialtyId)}</p>
-              </div>
-              
-              <div>
-                <span className="text-sm font-medium text-gray-700">Convênios:</span>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {doctor.insurances.map((insuranceId) => {
-                    const insurance = state.insurances.find(i => i.id === insuranceId);
-                    return insurance ? (
-                      <span key={insuranceId} className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                        {insurance.name}
-                      </span>
-                    ) : null;
-                  })}
-                </div>
-              </div>
-              
-              <div>
-                <span className="text-sm font-medium text-gray-700">Horários:</span>
-                <div className="text-xs text-gray-600 mt-1">
-                  {doctor.workingHours.map((wh) => (
-                    <div key={wh.day}>
-                      {dayLabels[wh.day as keyof typeof dayLabels]}: {wh.startTime} - {wh.endTime}
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div>
+              <button onClick={() => {
+                setEditingId(doctor.id);
+                setFormData({
+                  name: doctor.name,
+                  crm: doctor.crm,
+                  specialtyId: doctor.specialtyId,
+                  insurances: doctor.insurances,
+                  workingHours: doctor.workingHours,
+                });
+                setShowForm(true);
+              }} className="mr-2 text-blue-600">Editar</button>
+              <button onClick={() => handleDelete(doctor.id)} className="text-red-600">Excluir</button>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
-
-      {state.doctors.length === 0 && (
-        <div className="text-center py-12">
-          <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum médico cadastrado</h3>
-          <p className="text-gray-500">Comece adicionando um novo médico</p>
-        </div>
-      )}
+      </ul>
     </div>
   );
 };
