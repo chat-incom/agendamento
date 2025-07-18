@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../../lib/supabase.ts';
 import { Calendar, Clock, User, Shield, CheckCircle, XCircle } from 'lucide-react';
 import { formatDate, formatTime } from '../../utils/timeUtils';
 
