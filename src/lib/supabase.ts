@@ -1,3 +1,50 @@
+// Adicione estas interfaces no início do arquivo
+interface Especialidade {
+  id: string;
+  nome: string;
+  criado_por: string | null;
+}
+
+interface Convenio {
+  id: string;
+  nome: string;
+  criado_por: string | null;
+}
+
+interface Medico {
+  id: string;
+  nome: string;
+  crm: string;
+  especialidade_id: string;
+  criado_por: string | null;
+  created_at: string;
+}
+
+interface MedicoConvenio {
+  id: string;
+  medico_id: string;
+  convenio_id: string;
+}
+
+interface Agenda {
+  id: string;
+  medico_id: string;
+  dia_semana: string;
+  horario_inicio: string;
+  horario_fim: string;
+  tempo_intervalo: number;
+}
+
+interface Agendamento {
+  id: string;
+  usuario_id: string;
+  medico_id: string;
+  data: string;
+  horario: string;
+  convenio_id: string | null;
+  criado_em: string;
+}
+
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
