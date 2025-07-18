@@ -200,6 +200,73 @@ const DoctorManagement: React.FC = () => {
                 >
                   Cancelar
                 </button>
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">Horários de Atendimento</label>
+
+  <div className="flex flex-col md:flex-row gap-2 items-center mb-2">
+    <select
+      value={newWorkingHour.day}
+      onChange={(e) => setNewWorkingHour({ ...newWorkingHour, day: e.target.value as WorkingHours['day'] })}
+      className="px-3 py-2 border border-gray-300 rounded-md"
+    >
+      {Object.entries(dayLabels).map(([value, label]) => (
+        <option key={value} value={value}>
+          {label}
+        </option>
+      ))}
+    </select>
+
+    <input
+      type="time"
+      value={newWorkingHour.startTime}
+      onChange={(e) => setNewWorkingHour({ ...newWorkingHour, startTime: e.target.value })}
+      className="px-3 py-2 border border-gray-300 rounded-md"
+    />
+
+    <input
+      type="time"
+      value={newWorkingHour.endTime}
+      onChange={(e) => setNewWorkingHour({ ...newWorkingHour, endTime: e.target.value })}
+      className="px-3 py-2 border border-gray-300 rounded-md"
+    />
+
+    <input
+      type="number"
+      min={1}
+      value={newWorkingHour.intervalMinutes}
+      onChange={(e) => setNewWorkingHour({ ...newWorkingHour, intervalMinutes: Number(e.target.value) })}
+      className="w-24 px-3 py-2 border border-gray-300 rounded-md"
+      placeholder="Intervalo"
+    />
+
+    <button
+      type="button"
+      onClick={addWorkingHour}
+      className="bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700 transition-colors"
+    >
+      Adicionar
+    </button>
+  </div>
+
+  <ul className="list-disc ml-5 space-y-1 text-sm text-gray-700">
+    {formData.workingHours.map((wh) => (
+      <li key={wh.day} className="flex justify-between items-center">
+        <span>
+          {dayLabels[wh.day]}: {wh.startTime} - {wh.endTime} ({wh.intervalMinutes} min)
+        </span>
+        <button
+          type="button"
+          onClick={() => removeWorkingHour(wh.day)}
+          className="text-red-600 text-xs hover:underline"
+        >
+          Remover
+        </button>
+      </li>
+    ))}
+  </ul>
+</div>
+
+                
                 <button
                   type="submit"
                   className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
