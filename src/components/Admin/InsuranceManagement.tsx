@@ -1,62 +1,68 @@
-import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import React, { useState, useEffect } from 'react';
 import { Plus, Shield, Edit, Trash2 } from 'lucide-react';
-import { Insurance } from '../../types/index';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+type Insurance = {
+  id: string;
+  nome: string;
+  tipo: 'public' | 'private';
+};
 
 const InsuranceManagement: React.FC = () => {
-  const { state, dispatch } = useApp();
+  const [insurances, setInsurances] = useState<Insurance[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingInsurance, setEditingInsurance] = useState<Insurance | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
-    type: 'private' as 'public' | 'private',
+    nome: '',
+    tipo: 'private' as 'public' | 'private',
   });
+
+  const fetchInsurances = async () => {
+    const { data, error } = await supabase.from('convenios').select('*');
+    if (!error && data) {
+      setInsurances(data);
+    }
+  };
+
+  useEffect(() => {
+    fetchInsurances();
+  }, []);
 
   const handleEdit = (insurance: Insurance) => {
     setEditingInsurance(insurance);
-    setFormData({
-      name: insurance.name,
-      type: insurance.type,
-    });
+    setFormData({ nome: insurance.nome, tipo: insurance.tipo });
     setShowForm(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este convênio?')) {
-      dispatch({ type: 'DELETE_INSURANCE', payload: id });
+      await supabase.from('convenios').delete().eq('id', id);
+      fetchInsurances();
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (editingInsurance) {
-      const updatedInsurance: Insurance = {
-        ...editingInsurance,
-        name: formData.name,
-        type: formData.type,
-      };
-      dispatch({ type: 'UPDATE_INSURANCE', payload: updatedInsurance });
+      await supabase.from('convenios').update({ nome: formData.nome, tipo: formData.tipo }).eq('id', editingInsurance.id);
     } else {
-      const newInsurance: Insurance = {
-        id: Date.now().toString(),
-        name: formData.name,
-        type: formData.type,
-      };
-      dispatch({ type: 'ADD_INSURANCE', payload: newInsurance });
+      await supabase.from('convenios').insert({ nome: formData.nome, tipo: formData.tipo });
     }
-    
-    setFormData({ name: '', type: 'private' });
+    setFormData({ nome: '', tipo: 'private' });
     setEditingInsurance(null);
     setShowForm(false);
+    fetchInsurances();
   };
 
-  const publicInsurances = state.insurances.filter(i => i.type === 'public');
-  const privateInsurances = state.insurances.filter(i => i.type === 'private');
+  const publicInsurances = insurances.filter(i => i.tipo === 'public');
+  const privateInsurances = insurances.filter(i => i.tipo === 'private');
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Convênios</h2>
@@ -71,31 +77,26 @@ const InsuranceManagement: React.FC = () => {
         </button>
       </div>
 
-      {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold mb-4">{editingInsurance ? 'Editar Convênio' : 'Novo Convênio'}</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome do Convênio
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nome do Convênio</label>
                 <input
                   type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={formData.nome}
+                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tipo
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
                 <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value as 'public' | 'private' })}
+                  value={formData.tipo}
+                  onChange={(e) => setFormData({ ...formData, tipo: e.target.value as 'public' | 'private' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="private">Privado</option>
@@ -122,9 +123,7 @@ const InsuranceManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Insurance Lists */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Public Insurance */}
         <div>
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
             <Shield className="w-5 h-5 text-green-600 mr-2" />
@@ -139,34 +138,24 @@ const InsuranceManagement: React.FC = () => {
                       <Shield className="w-4 h-4 text-green-600" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-800">{insurance.name}</h4>
+                      <h4 className="font-semibold text-gray-800">{insurance.nome}</h4>
                       <p className="text-sm text-gray-600">Público</p>
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <button 
-                      onClick={() => handleEdit(insurance)}
-                      className="text-gray-400 hover:text-blue-600 transition-colors"
-                    >
+                    <button onClick={() => handleEdit(insurance)} className="text-gray-400 hover:text-blue-600 transition-colors">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button 
-                      onClick={() => handleDelete(insurance.id)}
-                      className="text-gray-400 hover:text-red-600 transition-colors"
-                    >
+                    <button onClick={() => handleDelete(insurance.id)} className="text-gray-400 hover:text-red-600 transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  {state.doctors.filter(d => d.insurances.includes(insurance.id)).length} médicos aceitam
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Private Insurance */}
         <div>
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
             <Shield className="w-5 h-5 text-blue-600 mr-2" />
@@ -181,27 +170,18 @@ const InsuranceManagement: React.FC = () => {
                       <Shield className="w-4 h-4 text-blue-600" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-800">{insurance.name}</h4>
+                      <h4 className="font-semibold text-gray-800">{insurance.nome}</h4>
                       <p className="text-sm text-gray-600">Privado</p>
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <button 
-                      onClick={() => handleEdit(insurance)}
-                      className="text-gray-400 hover:text-blue-600 transition-colors"
-                    >
+                    <button onClick={() => handleEdit(insurance)} className="text-gray-400 hover:text-blue-600 transition-colors">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button 
-                      onClick={() => handleDelete(insurance.id)}
-                      className="text-gray-400 hover:text-red-600 transition-colors"
-                    >
+                    <button onClick={() => handleDelete(insurance.id)} className="text-gray-400 hover:text-red-600 transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  {state.doctors.filter(d => d.insurances.includes(insurance.id)).length} médicos aceitam
                 </div>
               </div>
             ))}
@@ -209,7 +189,7 @@ const InsuranceManagement: React.FC = () => {
         </div>
       </div>
 
-      {state.insurances.length === 0 && (
+      {insurances.length === 0 && (
         <div className="text-center py-12">
           <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum convênio cadastrado</h3>
@@ -221,3 +201,4 @@ const InsuranceManagement: React.FC = () => {
 };
 
 export default InsuranceManagement;
+
