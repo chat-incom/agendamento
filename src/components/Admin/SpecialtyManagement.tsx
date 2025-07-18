@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Plus, Edit, Trash2, Activity } from 'lucide-react';
 import { Specialty } from '../../types/index';
+import { supabase } from '../../lib/supabaseClient';
 
 const SpecialtyManagement: React.FC = () => {
   const { state, dispatch } = useApp();
@@ -12,6 +13,26 @@ const SpecialtyManagement: React.FC = () => {
     description: '',
   });
 
+  useEffect(() => {
+    const fetchSpecialties = async () => {
+      const { data, error } = await supabase.from('especialidades').select('*');
+      if (data) {
+        dispatch({
+          type: 'SET_SPECIALTIES',
+          payload: data.map((s) => ({
+            id: s.id,
+            name: s.nome,
+            description: s.descricao ?? '',
+            createdAt: new Date(s.created_at ?? new Date()),
+          })),
+        });
+      } else {
+        console.error('Erro ao buscar especialidades:', error);
+      }
+    };
+    fetchSpecialties();
+  }, [dispatch]);
+
   const handleEdit = (specialty: Specialty) => {
     setEditingSpecialty(specialty);
     setFormData({
@@ -21,32 +42,52 @@ const SpecialtyManagement: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta especialidade?')) {
-      dispatch({ type: 'DELETE_SPECIALTY', payload: id });
+      const { error } = await supabase.from('especialidades').delete().eq('id', id);
+      if (!error) {
+        dispatch({ type: 'DELETE_SPECIALTY', payload: id });
+      }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (editingSpecialty) {
-      const updatedSpecialty: Specialty = {
-        ...editingSpecialty,
-        name: formData.name,
-        description: formData.description,
-      };
-      dispatch({ type: 'UPDATE_SPECIALTY', payload: updatedSpecialty });
+      const { error } = await supabase
+        .from('especialidades')
+        .update({ nome: formData.name, descricao: formData.description })
+        .eq('id', editingSpecialty.id);
+
+      if (!error) {
+        dispatch({
+          type: 'UPDATE_SPECIALTY',
+          payload: {
+            ...editingSpecialty,
+            name: formData.name,
+            description: formData.description,
+          },
+        });
+      }
     } else {
-      const newSpecialty: Specialty = {
-        id: Date.now().toString(),
-        name: formData.name,
-        description: formData.description,
-        createdAt: new Date(),
-      };
-      dispatch({ type: 'ADD_SPECIALTY', payload: newSpecialty });
+      const { data, error } = await supabase
+        .from('especialidades')
+        .insert([{ nome: formData.name, descricao: formData.description }])
+        .select()
+        .single();
+
+      if (data && !error) {
+        dispatch({
+          type: 'ADD_SPECIALTY',
+          payload: {
+            id: data.id,
+            name: data.nome,
+            description: data.descricao ?? '',
+            createdAt: new Date(data.created_at ?? new Date()),
+          },
+        });
+      }
     }
-    
     setFormData({ name: '', description: '' });
     setEditingSpecialty(null);
     setShowForm(false);
