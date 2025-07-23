@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Doctor, Specialty, Insurance, WorkingHours } from '../../types';
 import { Plus, User, Clock, Shield, Edit, Trash2 } from 'lucide-react';
-
+import { useApp } from '../../context/AppContext'; // certifique-se que esse hook está disponível
 
 const DoctorManagement: React.FC = () => {
   const { state, dispatch } = useApp();
@@ -34,20 +34,33 @@ const DoctorManagement: React.FC = () => {
     sunday: 'Domingo',
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const newDoctor: Doctor = {
-      id: Date.now().toString(),
+
+    const newDoctor = {
       name: formData.name,
       crm: formData.crm,
       specialtyId: formData.specialtyId,
       insurances: formData.selectedInsurances,
       workingHours: formData.workingHours,
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
     };
 
-    dispatch({ type: 'ADD_DOCTOR', payload: newDoctor });
+    const { data, error } = await supabase
+      .from('doctors') // substitua pelo nome real da sua tabela
+      .insert([newDoctor])
+      .select();
+
+    if (error) {
+      console.error('Erro ao salvar no Supabase:', error);
+      alert('Erro ao salvar o médico. Verifique os dados e tente novamente.');
+      return;
+    }
+
+    if (data && data.length > 0) {
+      dispatch({ type: 'ADD_DOCTOR', payload: data[0] });
+    }
+
     setFormData({
       name: '',
       crm: '',
@@ -55,6 +68,7 @@ const DoctorManagement: React.FC = () => {
       selectedInsurances: [],
       workingHours: [],
     });
+
     setShowForm(false);
   };
 
@@ -62,7 +76,7 @@ const DoctorManagement: React.FC = () => {
     const updatedInsurances = formData.selectedInsurances.includes(insuranceId)
       ? formData.selectedInsurances.filter(id => id !== insuranceId)
       : [...formData.selectedInsurances, insuranceId];
-    
+
     setFormData({ ...formData, selectedInsurances: updatedInsurances });
   };
 
@@ -184,7 +198,7 @@ const DoctorManagement: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Horários de Trabalho
                 </label>
-                
+
                 {/* Add Working Hour */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
                   <select
@@ -256,7 +270,7 @@ const DoctorManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Doctors Grid */}
+      {/* Lista de Médicos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {state.doctors.map((doctor) => (
           <div key={doctor.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
@@ -271,16 +285,10 @@ const DoctorManagement: React.FC = () => {
                 </div>
               </div>
               <div className="flex space-x-2">
-                <button 
-                  onClick={() => handleEdit(doctor)}
-                  className="text-gray-400 hover:text-blue-600 transition-colors"
-                >
+                <button className="text-gray-400 hover:text-blue-600 transition-colors">
                   <Edit className="w-4 h-4" />
                 </button>
-                <button 
-                  onClick={() => handleDelete(doctor.id)}
-                  className="text-gray-400 hover:text-red-600 transition-colors"
-                >
+                <button className="text-gray-400 hover:text-red-600 transition-colors">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -341,3 +349,4 @@ const DoctorManagement: React.FC = () => {
 };
 
 export default DoctorManagement;
+
