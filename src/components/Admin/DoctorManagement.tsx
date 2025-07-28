@@ -25,108 +25,44 @@ const DoctorManagement: React.FC = () => {
   const [newWorkingHour, setNewWorkingHour] = useState<WorkingHours>(defaultWorkingHours);
 
   const dayLabels = {
-    monday: 'Segunda',
-    tuesday: 'Terça',
-    wednesday: 'Quarta',
-    thursday: 'Quinta',
-    friday: 'Sexta',
+    monday: 'Segunda-feira',
+    tuesday: 'Terça-feira',
+    wednesday: 'Quarta-feira',
+    thursday: 'Quinta-feira',
+    friday: 'Sexta-feira',
     saturday: 'Sábado',
     sunday: 'Domingo',
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const newDoctor: Doctor = {
+      id: Date.now().toString(),
+      name: formData.name,
+      crm: formData.crm,
+      specialtyId: formData.specialtyId,
+      insurances: formData.selectedInsurances,
+      workingHours: formData.workingHours,
+      createdAt: new Date(),
+    };
 
-    try {
-      const { data: medicoData, error: medicoError } = await supabase
-        .from('medicos')
-        .insert([
-          {
-            nome: formData.name,
-            crm: formData.crm,
-            especialidade_id: formData.specialtyId,
-          },
-        ])
-        .select();
-
-      if (medicoError || !medicoData || medicoData.length === 0) {
-        console.error('Erro ao cadastrar médico:', medicoError);
-        alert('Erro ao cadastrar o médico.');
-        return;
-      }
-
-      const medicoId = medicoData[0].id;
-
-      const conveniosToInsert = formData.selectedInsurances.map((convenioId) => ({
-        medico_id: medicoId,
-        convenio_id: convenioId,
-      }));
-
-      if (conveniosToInsert.length > 0) {
-        const { error: conveniosError } = await supabase
-          .from('medico_convenios')
-          .insert(conveniosToInsert);
-
-        if (conveniosError) {
-          console.error('Erro ao vincular convênios:', conveniosError);
-          alert('Erro ao vincular convênios ao médico.');
-          return;
-        }
-      }
-
-      const agendaToInsert = formData.workingHours.map((wh) => ({
-        medico_id: medicoId,
-        dia_semana: dayLabels[wh.day],
-        horario_inicio: wh.startTime,
-        horario_fim: wh.endTime,
-        tempo_intervalo: wh.intervalMinutes,
-      }));
-
-      if (agendaToInsert.length > 0) {
-        const { error: agendaError } = await supabase
-          .from('agenda')
-          .insert(agendaToInsert);
-
-        if (agendaError) {
-          console.error('Erro ao cadastrar agenda:', agendaError);
-          alert('Erro ao cadastrar os horários de trabalho.');
-          return;
-        }
-      }
-
-      dispatch({
-        type: 'ADD_DOCTOR',
-        payload: {
-          id: medicoId,
-          name: formData.name,
-          crm: formData.crm,
-          specialtyId: formData.specialtyId,
-          insurances: formData.selectedInsurances,
-          workingHours: formData.workingHours,
-          createdAt: new Date().toISOString(),
-        },
-      });
-
-      setFormData({
-        name: '',
-        crm: '',
-        specialtyId: '',
-        selectedInsurances: [],
-        workingHours: [],
-      });
-      setShowForm(false);
-      alert('Médico cadastrado com sucesso!');
-    } catch (err) {
-      console.error('Erro inesperado:', err);
-      alert('Erro inesperado ao cadastrar médico.');
-    }
+    dispatch({ type: 'ADD_DOCTOR', payload: newDoctor });
+    setFormData({
+      name: '',
+      crm: '',
+      specialtyId: '',
+      selectedInsurances: [],
+      workingHours: [],
+    });
+    setShowForm(false);
   };
 
   const handleInsuranceToggle = (insuranceId: string) => {
     const updatedInsurances = formData.selectedInsurances.includes(insuranceId)
       ? formData.selectedInsurances.filter(id => id !== insuranceId)
       : [...formData.selectedInsurances, insuranceId];
-
+    
     setFormData({ ...formData, selectedInsurances: updatedInsurances });
   };
 
@@ -151,17 +87,7 @@ const DoctorManagement: React.FC = () => {
     return state.specialties.find(s => s.id === specialtyId)?.name || 'Especialidade não encontrada';
   };
 
-  useEffect(() => {
-    const fetchDoctors = async () => {
-      const { data: medicos, error } = await supabase.from('medicos').select('*');
-      if (!error && medicos) {
-        dispatch({ type: 'SET_DOCTORS', payload: medicos });
-      }
-    };
-    fetchDoctors();
-  }, []);
-
-   return (
+  return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
@@ -413,7 +339,5 @@ const DoctorManagement: React.FC = () => {
     </div>
   );
 };
-
-
 
 export default DoctorManagement;
