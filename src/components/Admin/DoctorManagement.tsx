@@ -26,15 +26,16 @@ const DoctorManagement: React.FC = () => {
 
   const [newWorkingHour, setNewWorkingHour] = useState<WorkingHours>(defaultWorkingHours);
 
-  const dayLabels: Record<string, string> = {
-    monday: 'Segunda-feira',
-    tuesday: 'Terça-feira',
-    wednesday: 'Quarta-feira',
-    thursday: 'Quinta-feira',
-    friday: 'Sexta-feira',
-    saturday: 'Sábado',
-    sunday: 'Domingo',
-  };
+  const dayDbToLabel: Record<string, string> = {
+  Segunda: 'Segunda-feira',
+  Terça: 'Terça-feira',
+  Quarta: 'Quarta-feira',
+  Quinta: 'Quinta-feira',
+  Sexta: 'Sexta-feira',
+  Sábado: 'Sábado',
+  Domingo: 'Domingo',
+};
+
 
 const dayMapToDb: Record<string, string> = {
   monday: 'Segunda',
