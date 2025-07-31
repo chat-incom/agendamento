@@ -36,6 +36,17 @@ const DoctorManagement: React.FC = () => {
     sunday: 'Domingo',
   };
 
+const dayMapToDb: Record<string, string> = {
+  monday: 'Segunda',
+  tuesday: 'Terça',
+  wednesday: 'Quarta',
+  thursday: 'Quinta',
+  friday: 'Sexta',
+  saturday: 'Sábado',
+  sunday: 'Domingo',
+};
+
+  
   // 🔹 Carregar médicos do Supabase
   useEffect(() => {
     const loadDoctors = async () => {
@@ -102,17 +113,18 @@ const DoctorManagement: React.FC = () => {
 
       // Atualizar agenda
       await supabase.from('agenda').delete().eq('medico_id', editingDoctorId);
+     
       await supabase
-        .from('agenda')
-        .insert(
-          formData.workingHours.map((wh) => ({
-            medico_id: editingDoctorId,
-            dia_semana: wh.day,
-            horario_inicio: wh.startTime,
-            horario_fim: wh.endTime,
-            tempo_intervalo: wh.intervalMinutes,
-          }))
-        );
+  .from('agenda')
+  .insert(
+    formData.workingHours.map((wh) => ({
+      medico_id: editingDoctorId,
+      dia_semana: dayMapToDb[wh.day], // ✅ Correto!
+      horario_inicio: wh.startTime,
+      horario_fim: wh.endTime,
+      tempo_intervalo: wh.intervalMinutes,
+    }))
+  );
 
       dispatch({
         type: 'UPDATE_DOCTOR',
@@ -149,17 +161,18 @@ const DoctorManagement: React.FC = () => {
         .from('medico_convenios')
         .insert(formData.selectedInsurances.map((id) => ({ medico_id: doctorId, convenio_id: id })));
 
-      await supabase
-        .from('agenda')
-        .insert(
-          formData.workingHours.map((wh) => ({
-            medico_id: doctorId,
-            dia_semana: wh.day,
-            horario_inicio: wh.startTime,
-            horario_fim: wh.endTime,
-            tempo_intervalo: wh.intervalMinutes,
-          }))
-        );
+await supabase
+  .from('agenda')
+  .insert(
+    formData.workingHours.map((wh) => ({
+      medico_id: doctorId,
+      dia_semana: dayMapToDb[wh.day], 
+      horario_inicio: wh.startTime,
+      horario_fim: wh.endTime,
+      tempo_intervalo: wh.intervalMinutes,
+    }))
+  );
+
 
       dispatch({
         type: 'ADD_DOCTOR',
