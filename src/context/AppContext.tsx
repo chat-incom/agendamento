@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { Doctor, Specialty, Insurance, Appointment } from '../types/index';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 
 interface AppState {
   specialties: Specialty[];
@@ -9,12 +9,17 @@ interface AppState {
   appointments: Appointment[];
   isLoggedIn: boolean;
   currentView: 'login' | 'admin' | 'booking';
+  user: any;
 }
 
 type AppAction = 
   | { type: 'SET_VIEW'; payload: 'login' | 'admin' | 'booking' }
-  | { type: 'LOGIN' }
+  | { type: 'LOGIN'; payload: any }
   | { type: 'LOGOUT' }
+  | { type: 'SET_SPECIALTIES'; payload: Specialty[] }
+  | { type: 'SET_DOCTORS'; payload: Doctor[] }
+  | { type: 'SET_INSURANCES'; payload: Insurance[] }
+  | { type: 'SET_APPOINTMENTS'; payload: Appointment[] }
   | { type: 'ADD_SPECIALTY'; payload: Specialty }
   | { type: 'ADD_DOCTOR'; payload: Doctor }
   | { type: 'ADD_INSURANCE'; payload: Insurance }
@@ -27,37 +32,13 @@ type AppAction =
   | { type: 'DELETE_INSURANCE'; payload: string };
 
 const initialState: AppState = {
-  specialties: [
-    { id: '1', name: 'Cardiologia', description: 'Especialidade focada no coração e sistema circulatório', createdAt: new Date() },
-    { id: '2', name: 'Dermatologia', description: 'Cuidados com a pele, cabelos e unhas', createdAt: new Date() },
-    { id: '3', name: 'Pediatria', description: 'Especialidade médica dedicada ao cuidado infantil', createdAt: new Date() },
-  ],
-  doctors: [
-    {
-      id: '1',
-      name: 'Dr. João Silva',
-      crm: 'CRM/SP 123456',
-      specialtyId: '1',
-      insurances: ['1', '2'],
-      workingHours: [
-        { day: 'monday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-        { day: 'tuesday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-        { day: 'wednesday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-        { day: 'thursday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-        { day: 'friday', startTime: '08:00', endTime: '17:00', intervalMinutes: 30 },
-      ],
-      createdAt: new Date(),
-    },
-  ],
-  insurances: [
-    { id: '1', name: 'SUS', type: 'public' },
-    { id: '2', name: 'Unimed', type: 'private' },
-    { id: '3', name: 'Bradesco Saúde', type: 'private' },
-    { id: '4', name: 'Amil', type: 'private' },
-  ],
+  specialties: [],
+  doctors: [],
+  insurances: [],
   appointments: [],
   isLoggedIn: false,
   currentView: 'login',
+  user: null,
 };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
@@ -65,9 +46,17 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
     case 'SET_VIEW':
       return { ...state, currentView: action.payload };
     case 'LOGIN':
-      return { ...state, isLoggedIn: true, currentView: 'admin' };
+      return { ...state, isLoggedIn: true, currentView: 'admin', user: action.payload };
     case 'LOGOUT':
-      return { ...state, isLoggedIn: false, currentView: 'login' };
+      return { ...state, isLoggedIn: false, currentView: 'login', user: null };
+    case 'SET_SPECIALTIES':
+      return { ...state, specialties: action.payload };
+    case 'SET_DOCTORS':
+      return { ...state, doctors: action.payload };
+    case 'SET_INSURANCES':
+      return { ...state, insurances: action.payload };
+    case 'SET_APPOINTMENTS':
+      return { ...state, appointments: action.payload };
     case 'ADD_SPECIALTY':
       return { ...state, specialties: [...state.specialties, action.payload] };
     case 'ADD_DOCTOR':
@@ -128,6 +117,61 @@ const AppContext = createContext<{
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load specialties
+        const { data: specialties } = await supabase.from('especialidades').select('*');
+        if (specialties) {
+          dispatch({
+            type: 'SET_SPECIALTIES',
+            payload: specialties.map(s => ({ id: s.id, name: s.nome }))
+          });
+        }
+
+        // Load insurances
+        const { data: insurances } = await supabase.from('convenios').select('*');
+        if (insurances) {
+          dispatch({
+            type: 'SET_INSURANCES',
+            payload: insurances.map(i => ({ id: i.id, name: i.nome }))
+          });
+        }
+
+        // Load doctors with schedules and insurances
+        const { data: doctors } = await supabase
+          .from('medicos')
+          .select(`
+            *,
+            agenda(*),
+            medico_convenios(convenio_id)
+          `);
+
+        if (doctors) {
+          dispatch({
+            type: 'SET_DOCTORS',
+            payload: doctors.map(d => ({
+              id: d.id,
+              name: d.nome,
+              crm: d.crm,
+              specialtyId: d.especialidade_id || '',
+              insurances: d.medico_convenios?.map((mc: any) => mc.convenio_id) || [],
+              workingHours: d.agenda?.map((a: any) => ({
+                day: a.dia_semana?.toLowerCase() || '',
+                startTime: a.horario_inicio,
+                endTime: a.horario_fim,
+                intervalMinutes: a.tempo_intervalo || 30
+              })) || []
+            }))
+          });
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+
+    loadData();
+  }, []);
   return (
     <AppContext.Provider value={{ state, dispatch }}>
       {children}

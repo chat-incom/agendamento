@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Plus, Shield, Edit, Trash2 } from 'lucide-react';
 import { Insurance, Doctor } from '../../types/index';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabaseClient';
 
 const InsuranceManagement: React.FC = () => {
   const { state, dispatch } = useApp();
@@ -10,7 +10,6 @@ const InsuranceManagement: React.FC = () => {
   const [editingInsurance, setEditingInsurance] = useState<Insurance | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    type: 'private' as 'public' | 'private',
   });
   const [doctorMap, setDoctorMap] = useState<Record<string, number>>({});
 
@@ -36,7 +35,6 @@ const InsuranceManagement: React.FC = () => {
     setEditingInsurance(insurance);
     setFormData({
       name: insurance.name,
-      type: insurance.type,
     });
     setShowForm(true);
   };
@@ -54,52 +52,47 @@ const InsuranceManagement: React.FC = () => {
     if (editingInsurance) {
       const { data, error } = await supabase
         .from('convenios')
-        .update({ name: formData.name, type: formData.type })
+        .update({ nome: formData.name })
         .eq('id', editingInsurance.id);
 
       if (!error && data) {
         const updatedInsurance: Insurance = {
           ...editingInsurance,
           name: formData.name,
-          type: formData.type,
         };
         dispatch({ type: 'UPDATE_INSURANCE', payload: updatedInsurance });
       }
     } else {
       const { data, error } = await supabase
         .from('convenios')
-        .insert({ name: formData.name, type: formData.type })
+        .insert({ nome: formData.name })
         .select()
         .single();
 
       if (!error && data) {
         const newInsurance: Insurance = {
           id: data.id,
-          name: data.name,
-          type: data.type,
+          name: data.nome,
         };
         dispatch({ type: 'ADD_INSURANCE', payload: newInsurance });
       }
     }
 
-    setFormData({ name: '', type: 'private' });
+    setFormData({ name: '' });
     setEditingInsurance(null);
     setShowForm(false);
   };
 
-  const publicInsurances = state.insurances.filter(i => i.type === 'public');
-  const privateInsurances = state.insurances.filter(i => i.type === 'private');
 
-  const renderInsuranceCard = (insurance: Insurance, color: string, label: string) => (
+  const renderInsuranceCard = (insurance: Insurance) => (
     <div key={insurance.id} className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className={`p-2 rounded-lg bg-${color}-100`}>
-            <Shield className={`w-4 h-4 text-${color}-600`} />
+          <div className="p-2 rounded-lg bg-blue-100">
+            <Shield className="w-4 h-4 text-blue-600" />
           </div>
           <div>
             <h4 className="font-semibold text-gray-800">{insurance.name}</h4>
-            <p className="text-sm text-gray-600">{label}</p>
           </div>
         </div>
         <div className="flex space-x-2">
@@ -148,17 +141,6 @@ const InsuranceManagement: React.FC = () => {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value as 'public' | 'private' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="private">Privado</option>
-                  <option value="public">Público</option>
-                </select>
-              </div>
               <div className="flex justify-end space-x-3">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
                   Cancelar
@@ -172,25 +154,8 @@ const InsuranceManagement: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <Shield className="w-5 h-5 text-green-600 mr-2" />
-            Convênios Públicos
-          </h3>
-          <div className="space-y-3">
-            {publicInsurances.map((i) => renderInsuranceCard(i, 'green', 'Público'))}
-          </div>
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <Shield className="w-5 h-5 text-blue-600 mr-2" />
-            Convênios Privados
-          </h3>
-          <div className="space-y-3">
-            {privateInsurances.map((i) => renderInsuranceCard(i, 'blue', 'Privado'))}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {state.insurances.map((insurance) => renderInsuranceCard(insurance))}
       </div>
 
       {state.insurances.length === 0 && (

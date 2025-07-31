@@ -10,34 +10,13 @@ const SpecialtyManagement: React.FC = () => {
   const [editingSpecialty, setEditingSpecialty] = useState<Specialty | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
   });
 
-  useEffect(() => {
-    const fetchSpecialties = async () => {
-      const { data, error } = await supabase.from('especialidades').select('*');
-      if (data) {
-        dispatch({
-          type: 'SET_SPECIALTIES',
-          payload: data.map((s) => ({
-            id: s.id,
-            name: s.nome,
-            description: s.descricao ?? '',
-            createdAt: new Date(s.created_at ?? new Date()),
-          })),
-        });
-      } else {
-        console.error('Erro ao buscar especialidades:', error);
-      }
-    };
-    fetchSpecialties();
-  }, [dispatch]);
 
   const handleEdit = (specialty: Specialty) => {
     setEditingSpecialty(specialty);
     setFormData({
       name: specialty.name,
-      description: specialty.description,
     });
     setShowForm(true);
   };
@@ -56,7 +35,7 @@ const SpecialtyManagement: React.FC = () => {
     if (editingSpecialty) {
       const { error } = await supabase
         .from('especialidades')
-        .update({ nome: formData.name, descricao: formData.description })
+        .update({ nome: formData.name })
         .eq('id', editingSpecialty.id);
 
       if (!error) {
@@ -65,14 +44,13 @@ const SpecialtyManagement: React.FC = () => {
           payload: {
             ...editingSpecialty,
             name: formData.name,
-            description: formData.description,
           },
         });
       }
     } else {
       const { data, error } = await supabase
         .from('especialidades')
-        .insert([{ nome: formData.name, descricao: formData.description }])
+        .insert([{ nome: formData.name }])
         .select()
         .single();
 
@@ -82,13 +60,11 @@ const SpecialtyManagement: React.FC = () => {
           payload: {
             id: data.id,
             name: data.nome,
-            description: data.descricao ?? '',
-            createdAt: new Date(data.created_at ?? new Date()),
           },
         });
       }
     }
-    setFormData({ name: '', description: '' });
+    setFormData({ name: '' });
     setEditingSpecialty(null);
     setShowForm(false);
   };
@@ -125,18 +101,6 @@ const SpecialtyManagement: React.FC = () => {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Descrição
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
                   required
                 />
               </div>
@@ -186,9 +150,7 @@ const SpecialtyManagement: React.FC = () => {
                 </button>
               </div>
             </div>
-            <p className="text-gray-600 mb-4">{specialty.description}</p>
             <div className="flex justify-between items-center text-sm text-gray-500">
-              <span>Criada em {specialty.createdAt.toLocaleDateString('pt-BR')}</span>
               <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                 {state.doctors.filter(d => d.specialtyId === specialty.id).length} médicos
               </span>

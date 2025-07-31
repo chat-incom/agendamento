@@ -1,18 +1,33 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabaseClient';
 import { UserCheck, Calendar, Stethoscope, Users, Clock, Shield } from 'lucide-react';
 
 const LoginScreen: React.FC = () => {
   const { dispatch } = useApp();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'admin' && password === 'admin') {
-      dispatch({ type: 'LOGIN' });
-    } else {
-      alert('Credenciais inválidas. Use admin/admin para acessar.');
+    setLoading(true);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: username,
+        password: password,
+      });
+
+      if (error) {
+        alert('Credenciais inválidas');
+      } else if (data.user) {
+        dispatch({ type: 'LOGIN', payload: data.user });
+      }
+    } catch (error) {
+      alert('Erro ao fazer login');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -99,9 +114,10 @@ const LoginScreen: React.FC = () => {
             />
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm"
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm disabled:opacity-50"
+              disabled={loading}
             >
-              Entrar no Sistema
+              {loading ? 'Entrando...' : 'Entrar no Sistema'}
             </button>
           </form>
         </div>

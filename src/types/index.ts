@@ -1,14 +1,11 @@
 export interface Specialty {
   id: string;
   name: string;
-  description: string;
-  createdAt: Date;
 }
 
 export interface Insurance {
   id: string;
   name: string;
-  type: 'private' | 'public';
 }
 
 export interface WorkingHours {
@@ -25,7 +22,6 @@ export interface Doctor {
   specialtyId: string;
   insurances: string[];
   workingHours: WorkingHours[];
-  createdAt: Date;
 }
 
 export interface Patient {
@@ -33,7 +29,6 @@ export interface Patient {
   birthDate: string;
   city: string;
   phone: string;
-  email: string;
 }
 
 export interface Appointment {
@@ -44,7 +39,6 @@ export interface Appointment {
   patient: Patient;
   insuranceId?: string;
   status: 'scheduled' | 'completed' | 'cancelled';
-  createdAt: Date;
 }
 
 export interface TimeSlot {
