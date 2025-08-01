@@ -13,13 +13,6 @@ export function generateTimeSlots(
     return slots;
   }
 
-  const [startHour, startMinute] = workingHours.startTime.split(':').map(Number);
-  const [endHour, endMinute] = workingHours.endTime.split(':').map(Number);
-
-  if (isNaN(startHour) || isNaN(startMinute) || isNaN(endHour) || isNaN(endMinute)) {
-    return slots;
-  }
-
   const interval = workingHours.intervalMinutes || 15;
   const startTime = new Date(`${date}T${workingHours.startTime}:00`);
   const endTime = new Date(`${date}T${workingHours.endTime}:00`);
@@ -29,9 +22,15 @@ export function generateTimeSlots(
   }
 
   const current = new Date(startTime);
+  const now = new Date();
 
   while (current < endTime) {
     const time = current.toTimeString().slice(0, 5);
+    const slotDateTime = new Date(`${date}T${time}:00`);
+    
+    // Não permitir agendamentos no passado
+    const isPast = slotDateTime <= now;
+    
     const isTaken = appointments.some(
       (appt) => appt.date === date && appt.time === time && appt.doctorId === doctorId
     );
@@ -39,7 +38,7 @@ export function generateTimeSlots(
     slots.push({
       doctorId,
       time,
-      available: !isTaken,
+      available: !isTaken && !isPast,
     });
 
     current.setMinutes(current.getMinutes() + interval);

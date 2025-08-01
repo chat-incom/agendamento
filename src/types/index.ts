@@ -29,6 +29,7 @@ export interface Patient {
   birthDate: string;
   city: string;
   phone: string;
+  email: string;
 }
 
 export interface Appointment {
@@ -39,10 +40,12 @@ export interface Appointment {
   patient: Patient;
   insuranceId?: string;
   status: 'scheduled' | 'completed' | 'cancelled';
+  createdAt: Date;
 }
 
 export interface TimeSlot {
   doctorId: string;
   time: string;
   available: boolean;
+  doctorName?: string;
 }
