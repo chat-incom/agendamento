@@ -39,12 +39,59 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Função auxiliar: obter o nome do dia
+  const getDayName = (date: string): string => {
+    const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    return days[new Date(date).getDay()];
+  };
+
+  // Função: gerar horários disponíveis
+  const generateTimeSlots = (
+    workingHours: {
+      day: string;
+      startTime: string;
+      endTime: string;
+      intervalMinutes: number;
+    },
+    date: string,
+    appointments: Appointment[],
+    doctorId: string,
+    doctorName: string
+  ): TimeSlot[] => {
+    const slots: TimeSlot[] = [];
+
+    const start = new Date(`${date}T${workingHours.startTime}`);
+    const end = new Date(`${date}T${workingHours.endTime}`);
+
+    let current = new Date(start);
+
+    while (current < end) {
+      const timeString = current.toTimeString().slice(0, 5); // HH:mm
+
+      const isBooked = appointments.some(
+        apt => apt.time.slice(0, 5) === timeString
+      );
+
+      slots.push({
+        doctorId,
+        date,
+        time: timeString,
+        available: !isBooked,
+        doctorName,
+      });
+
+      current.setMinutes(current.getMinutes() + workingHours.intervalMinutes);
+    }
+
+    return slots;
+  };
+
   // Carregar datas disponíveis
   useEffect(() => {
     const loadAvailableDates = async () => {
       try {
         let doctorIds: string[] = [];
-        
+
         if (selectedDoctor) {
           doctorIds = [selectedDoctor.id];
         } else if (selectedSpecialty) {
@@ -53,7 +100,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
             .map(d => d.id);
         }
 
-        if (doctorIds.length === 0) return;
+        if (doctorIds.length === 0) {
+          setAvailableDates([]);
+          return;
+        }
 
         const { data: agendaData, error } = await supabase
           .from('agenda')
@@ -62,11 +112,12 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
 
         if (error) {
           console.error('Erro ao carregar agenda:', error);
+          setAvailableDates([]);
           return;
         }
 
-        // Obter próximos 30 dias
-        const next30Days = [];
+        // Próximos 30 dias
+        const next30Days: string[] = [];
         const today = new Date();
         for (let i = 1; i <= 30; i++) {
           const date = new Date(today);
@@ -74,7 +125,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
           next30Days.push(date.toISOString().split('T')[0]);
         }
 
-        // Filtrar datas que têm médicos disponíveis
+        // Dias da semana com médicos disponíveis
         const availableWeekdays = [...new Set(agendaData?.map(a => a.dia_semana) || [])];
         const filteredDates = next30Days.filter(date => {
           const dayName = getDayName(date);
@@ -82,110 +133,191 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         });
 
         setAvailableDates(filteredDates);
-      } catch (error) {
-        console.error('Erro ao carregar datas:', error);
+      } catch (err) {
+        console.error('Erro ao carregar datas:', err);
+        setAvailableDates([]);
       }
     };
 
     loadAvailableDates();
   }, [selectedDoctor, selectedSpecialty, state.doctors]);
 
+  // resto do componente...
+};
+
+
+// Função auxiliar para pegar o dia no formato aceito pelo banco
+const getDayName = (date: string): string => {
+  const days = [
+    'Domingo', 'Segunda', 'Terça', 'Quarta',
+    'Quinta', 'Sexta', 'Sábado'
+  ];
+  return days[new Date(date).getDay()];
+};
+
+// Função para gerar os horários disponíveis
+const generateTimeSlots = (
+  workingHours: {
+    day: string;
+    startTime: string;
+    endTime: string;
+    intervalMinutes: number;
+  },
+  date: string,
+  appointments: Appointment[],
+  doctorId: string
+): TimeSlot[] => {
+  const slots: TimeSlot[] = [];
+
+  const start = new Date(`${date}T${workingHours.startTime}`);
+  const end = new Date(`${date}T${workingHours.endTime}`);
+
+  let current = new Date(start);
+
+  while (current < end) {
+    const timeString = current.toTimeString().slice(0, 5); // HH:mm
+
+    const isBooked = appointments.some(
+      apt => apt.time.slice(0, 5) === timeString
+    );
+
+    slots.push({
+      doctorId,
+      date,
+      time: timeString,
+      available: !isBooked,
+      doctorName: '', // preenchido depois
+    });
+
+    current.setMinutes(current.getMinutes() + workingHours.intervalMinutes);
+  }
+
+  return slots;
+};
+  
+
   // Carregar horários quando data é selecionada
-  useEffect(() => {
-    const loadTimeSlots = async () => {
-      if (!selectedDate) {
+ useEffect(() => {
+  const loadTimeSlots = async () => {
+    if (!selectedDate) {
+      setTimeSlots([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formattedDate = new Date(selectedDate).toISOString().split('T')[0];
+      const dayName = getDayName(selectedDate);
+
+      let doctorIds: string[] = [];
+      if (selectedDoctor) {
+        doctorIds = [selectedDoctor.id];
+      } else if (selectedSpecialty) {
+        doctorIds = state.doctors
+          .filter(d => d.specialtyId === selectedSpecialty.id)
+          .map(d => d.id);
+      }
+
+      if (doctorIds.length === 0) {
+        console.warn('Nenhum médico encontrado para a especialidade selecionada');
+        setTimeSlots([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log('selectedDate:', formattedDate);
+      console.log('dayName:', dayName);
+      console.log('doctorIds:', doctorIds);
+
+        // Buscar agenda dos médicos para o dia
+        const { data: agendaData, error: agendaError } = await supabase
+        .from('agenda')
+        .select('*')
+        .in('medico_id', doctorIds)
+        .eq('dia_semana', dayName);
+
+      if (agendaError) {
+        console.error('Erro ao carregar agenda:', agendaError);
         setTimeSlots([]);
         return;
       }
 
-      setLoading(true);
-      try {
-        const dayName = getDayName(selectedDate);
-        let doctorIds: string[] = [];
-        
-        if (selectedDoctor) {
-          doctorIds = [selectedDoctor.id];
-        } else if (selectedSpecialty) {
-          doctorIds = state.doctors
-            .filter(d => d.specialtyId === selectedSpecialty.id)
-            .map(d => d.id);
-        }
-
-        // Buscar agenda dos médicos para o dia
-        const { data: agendaData, error: agendaError } = await supabase
-          .from('agenda')
-          .select('*')
-          .in('medico_id', doctorIds)
-          .eq('dia_semana', dayName);
-
-        if (agendaError) {
-          console.error('Erro ao carregar agenda:', agendaError);
-          setTimeSlots([]);
-          return;
-        }
+      console.log('agendaData:', agendaData);
 
         // Buscar agendamentos existentes para a data
-        const { data: appointmentsData, error: appointmentsError } = await supabase
-          .from('agendamentos')
-          .select('medico_id, horario')
-          .in('medico_id', doctorIds)
-          .eq('data', selectedDate);
+       const { data: appointmentsData, error: appointmentsError } = await supabase
+        .from('agendamentos')
+        .select('medico_id, horario')
+        .in('medico_id', doctorIds)
+        .eq('data', formattedDate);
 
-        if (appointmentsError) {
-          console.error('Erro ao carregar agendamentos:', appointmentsError);
-        }
+      if (appointmentsError) {
+        console.error('Erro ao carregar agendamentos:', appointmentsError);
+      }
 
-        const existingAppointments = appointmentsData || [];
-        const allSlots: TimeSlot[] = [];
+      console.log('appointmentsData:', appointmentsData);
 
+      const existingAppointments = appointmentsData || [];
+      const allSlots: TimeSlot[] = [];
+        
         // Gerar slots para cada médico
         agendaData?.forEach(agenda => {
-          const doctor = state.doctors.find(d => d.id === agenda.medico_id);
-          if (!doctor) return;
+        const doctor = state.doctors.find(d => d.id === agenda.medico_id);
+        if (!doctor) {
+          console.warn('Médico não encontrado em state.doctors:', agenda.medico_id);
+          return;
+        }
+         const workingHours = {
+          day: agenda.dia_semana,
+          startTime: agenda.horario_inicio,
+          endTime: agenda.horario_fim,
+          intervalMinutes: agenda.tempo_intervalo || 30,
+        };
 
-          const workingHours = {
-            day: agenda.dia_semana,
-            startTime: agenda.horario_inicio,
-            endTime: agenda.horario_fim,
-            intervalMinutes: agenda.tempo_intervalo || 30
-          };
+         console.log('Gerando horários para:', doctor.name, workingHours);
 
-          const doctorAppointments = existingAppointments
-            .filter(apt => apt.medico_id === agenda.medico_id)
-            .map(apt => ({
-              id: '',
-              doctorId: apt.medico_id,
-              date: selectedDate,
-              time: apt.horario,
-              patient: { name: '', birthDate: '', city: '', phone: '', email: '' },
-              status: 'scheduled' as const,
-              createdAt: new Date()
-            }));
-
-          const slots = generateTimeSlots(workingHours, selectedDate, doctorAppointments, agenda.medico_id);
-          
-          // Adicionar informação do médico aos slots
-          const slotsWithDoctor = slots.map(slot => ({
-            ...slot,
-            doctorName: doctor.name
+        const doctorAppointments = existingAppointments
+          .filter(apt => apt.medico_id === agenda.medico_id)
+          .map(apt => ({
+            id: '',
+            doctorId: apt.medico_id,
+            date: formattedDate,
+            time: apt.horario,
+            patient: { name: '', birthDate: '', city: '', phone: '', email: '' },
+            status: 'scheduled' as const,
+            createdAt: new Date(),
           }));
 
-          allSlots.push(...slotsWithDoctor);
-        });
+          const slots = generateTimeSlots(
+          workingHours,
+          formattedDate,
+          doctorAppointments,
+          agenda.medico_id
+        );
+          
+          // Adicionar informação do médico aos slots
+         const slotsWithDoctor = slots.map(slot => ({
+          ...slot,
+          doctorName: doctor.name,
+        }));
 
-        // Ordenar por horário
-        allSlots.sort((a, b) => a.time.localeCompare(b.time));
-        setTimeSlots(allSlots);
-      } catch (error) {
-        console.error('Erro ao carregar horários:', error);
-        setTimeSlots([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+        allSlots.push(...slotsWithDoctor);
+      });
 
-    loadTimeSlots();
-  }, [selectedDate, selectedDoctor, selectedSpecialty, state.doctors]);
+      allSlots.sort((a, b) => a.time.localeCompare(b.time));
+      setTimeSlots(allSlots);
+
+      console.log('timeSlots gerados:', allSlots);
+    } catch (error) {
+      console.error('Erro ao carregar horários:', error);
+      setTimeSlots([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadTimeSlots();
+}, [selectedDate, selectedDoctor, selectedSpecialty, state.doctors]);
 
   const getDoctorForTimeSlot = (time: string): Doctor | null => {
     if (selectedDoctor) return selectedDoctor;
