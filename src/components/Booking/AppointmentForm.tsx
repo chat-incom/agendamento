@@ -321,7 +321,6 @@ const generateTimeSlots = (
 
   const getDoctorForTimeSlot = (time: string): Doctor | null => {
     if (selectedDoctor) return selectedDoctor;
-
     const slot = timeSlots.find(s => s.time === time && s.available);
     return slot ? state.doctors.find(d => d.id === slot.doctorId) || null : null;
   };
@@ -709,7 +708,7 @@ const generateTimeSlots = (
         )}
       </div>
     </div>
-  );
-
+ );
+};
 
 export default AppointmentForm;
