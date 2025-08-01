@@ -710,6 +710,6 @@ const generateTimeSlots = (
       </div>
     </div>
   );
-};
+
 
 export default AppointmentForm;
