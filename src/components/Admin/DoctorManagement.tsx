@@ -4,6 +4,19 @@ import { Doctor, Specialty, Insurance, WorkingHours } from '../../types';
 import { Plus, User, Clock, Shield, Edit, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
+// Mapeamento consistente de dias da semana
+const dayLabels: Record<string, string> = {
+  Segunda: 'Segunda-feira',
+  Terça: 'Terça-feira',
+  Quarta: 'Quarta-feira',
+  Quinta: 'Quinta-feira',
+  Sexta: 'Sexta-feira',
+  Sábado: 'Sábado',
+  Domingo: 'Domingo',
+};
+
+const dayKeys = Object.keys(dayLabels);
+
 const DoctorManagement: React.FC = () => {
   const { state, dispatch } = useApp();
   const [showForm, setShowForm] = useState(false);
@@ -18,34 +31,13 @@ const DoctorManagement: React.FC = () => {
   });
 
   const defaultWorkingHours: WorkingHours = {
-    day: 'monday',
+    day: 'Segunda',
     startTime: '08:00',
     endTime: '17:00',
     intervalMinutes: 30,
   };
 
   const [newWorkingHour, setNewWorkingHour] = useState<WorkingHours>(defaultWorkingHours);
-
-  const dayDbToLabel: Record<string, string> = {
-  Segunda: 'Segunda-feira',
-  Terça: 'Terça-feira',
-  Quarta: 'Quarta-feira',
-  Quinta: 'Quinta-feira',
-  Sexta: 'Sexta-feira',
-  Sábado: 'Sábado',
-  Domingo: 'Domingo',
-};
-
-
-const dayMapToDb: Record<string, string> = {
-  monday: 'Segunda',
-  tuesday: 'Terça',
-  wednesday: 'Quarta',
-  thursday: 'Quinta',
-  friday: 'Sexta',
-  saturday: 'Sábado',
-  sunday: 'Domingo',
-};
 
   
   // 🔹 Carregar médicos do Supabase
@@ -73,7 +65,7 @@ const dayMapToDb: Record<string, string> = {
             insurances: d.medico_convenios?.map((mc: any) => mc.convenio_id) || [],
             workingHours:
               d.agenda?.map((a: any) => ({
-                day: a.dia_semana?.toLowerCase() || '',
+                day: a.dia_semana || '',
                 startTime: a.horario_inicio,
                 endTime: a.horario_fim,
                 intervalMinutes: a.tempo_intervalo || 30,
@@ -116,16 +108,16 @@ const dayMapToDb: Record<string, string> = {
       await supabase.from('agenda').delete().eq('medico_id', editingDoctorId);
      
       await supabase
-  .from('agenda')
-  .insert(
-    formData.workingHours.map((wh) => ({
-      medico_id: editingDoctorId,
-      dia_semana: dayMapToDb[wh.day], // ✅ Correto!
-      horario_inicio: wh.startTime,
-      horario_fim: wh.endTime,
-      tempo_intervalo: wh.intervalMinutes,
-    }))
-  );
+        .from('agenda')
+        .insert(
+          formData.workingHours.map((wh) => ({
+            medico_id: editingDoctorId,
+            dia_semana: wh.day,
+            horario_inicio: wh.startTime,
+            horario_fim: wh.endTime,
+            tempo_intervalo: wh.intervalMinutes,
+          }))
+        );
 
       dispatch({
         type: 'UPDATE_DOCTOR',
@@ -162,17 +154,17 @@ const dayMapToDb: Record<string, string> = {
         .from('medico_convenios')
         .insert(formData.selectedInsurances.map((id) => ({ medico_id: doctorId, convenio_id: id })));
 
-await supabase
-  .from('agenda')
-  .insert(
-    formData.workingHours.map((wh) => ({
-      medico_id: doctorId,
-      dia_semana: dayMapToDb[wh.day], 
-      horario_inicio: wh.startTime,
-      horario_fim: wh.endTime,
-      tempo_intervalo: wh.intervalMinutes,
-    }))
-  );
+      await supabase
+        .from('agenda')
+        .insert(
+          formData.workingHours.map((wh) => ({
+            medico_id: doctorId,
+            dia_semana: wh.day,
+            horario_inicio: wh.startTime,
+            horario_fim: wh.endTime,
+            tempo_intervalo: wh.intervalMinutes,
+          }))
+        );
 
 
       dispatch({
@@ -349,12 +341,12 @@ await supabase
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
                   <select
                     value={newWorkingHour.day}
-                    onChange={(e) => setNewWorkingHour({ ...newWorkingHour, day: e.target.value as any })}
+                    onChange={(e) => setNewWorkingHour({ ...newWorkingHour, day: e.target.value })}
                     className="px-2 py-1 border border-gray-300 rounded text-sm"
                   >
-                    {Object.entries(dayLabels).map(([day, label]) => (
+                    {dayKeys.map((day) => (
                       <option key={day} value={day}>
-                        {label}
+                        {dayLabels[day]}
                       </option>
                     ))}
                   </select>
@@ -383,7 +375,7 @@ await supabase
                   {formData.workingHours.map((wh) => (
                     <div key={wh.day} className="flex items-center justify-between bg-white p-2 rounded border">
                       <span className="text-sm">
-                        {dayLabels[wh.day]}: {wh.startTime} - {wh.endTime} (intervalo: {wh.intervalMinutes}min)
+                        {dayLabels[wh.day] || wh.day}: {wh.startTime} - {wh.endTime} (intervalo: {wh.intervalMinutes}min)
                       </span>
                       <button
                         type="button"
@@ -471,7 +463,7 @@ await supabase
                 <div className="text-xs text-gray-600 space-y-1">
                   {doctor.workingHours.map((wh) => (
                     <div key={wh.day}>
-                      {dayLabels[wh.day]}: {wh.startTime} - {wh.endTime}
+                      {dayLabels[wh.day] || wh.day}: {wh.startTime} - {wh.endTime}
                     </div>
                   ))}
                 </div>
@@ -493,5 +485,3 @@ await supabase
 };
 
 export default DoctorManagement;
-
-

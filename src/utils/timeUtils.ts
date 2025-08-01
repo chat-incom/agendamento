@@ -58,7 +58,7 @@ export function formatTime(timeString: string): string {
 
 export function getDayName(dateString: string): string {
   const date = new Date(dateString);
-  const days = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+  const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   return days[date.getDay()];
 }
 

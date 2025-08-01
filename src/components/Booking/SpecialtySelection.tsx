@@ -14,8 +14,7 @@ const SpecialtySelection: React.FC<SpecialtySelectionProps> = ({ onSpecialtySele
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredSpecialties = state.specialties.filter(specialty =>
-    specialty.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    specialty.description.toLowerCase().includes(searchTerm.toLowerCase())
+    specialty.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getDoctorCount = (specialtyId: string) => {
@@ -66,7 +65,6 @@ const SpecialtySelection: React.FC<SpecialtySelectionProps> = ({ onSpecialtySele
                   <Activity className="w-8 h-8 text-green-600" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-800 mb-2">{specialty.name}</h3>
-                <p className="text-sm text-gray-600 mb-4">{specialty.description}</p>
               </div>
 
               <div className="space-y-3">
