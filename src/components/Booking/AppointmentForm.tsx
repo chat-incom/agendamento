@@ -374,77 +374,77 @@ const generateTimeSlots = (
       }
 
       // Atualizar estado local
-      const newAppointment: Appointment = {
-        id: appointmentData.id,
-        doctorId: doctor.id,
-        date: selectedDate,
-        time: selectedTime,
-        patient: patientData,
-        insuranceId: selectedInsurance || undefined,
-        status: 'scheduled',
-        createdAt: new Date(),
-      };
+     const newAppointment: Appointment = {
+  id: appointmentData.id,
+  doctorId: doctor.id,
+  date: selectedDate,
+  time: selectedTime,
+  patient: patientData,
+  insuranceId: selectedInsurance || undefined,
+  status: 'scheduled',
+  createdAt: new Date(),
+};
 
-      dispatch({ type: 'ADD_APPOINTMENT', payload: newAppointment });
-      setShowSuccess(true);
-    } catch (error) {
-      console.error('Erro ao confirmar agendamento:', error);
-      alert('Erro ao confirmar agendamento. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
+dispatch({ type: 'ADD_APPOINTMENT', payload: newAppointment });
+setShowSuccess(true);
+} catch (error) {
+  console.error('Erro ao confirmar agendamento:', error);
+  alert('Erro ao confirmar agendamento. Tente novamente.');
+} finally {
+  setLoading(false);
+}
 
-  const handleBackToBooking = () => {
-    dispatch({ type: 'SET_VIEW', payload: 'booking' });
-    setShowSuccess(false);
-  };
+const handleBackToBooking = () => {
+  dispatch({ type: 'SET_VIEW', payload: 'booking' });
+  setShowSuccess(false);
+};
 
-  if (showSuccess) {
-    const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
-    const specialty = selectedSpecialty || state.specialties.find(s => s.id === doctor?.specialtyId);
-    const insurance = selectedInsurance ? state.insurances.find(i => i.id === selectedInsurance) : null;
+if (showSuccess) {
+  const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
+  const specialty = selectedSpecialty || state.specialties.find(s => s.id === doctor?.specialtyId);
+  const insurance = selectedInsurance ? state.insurances.find(i => i.id === selectedInsurance) : null;
 
-    return (
-      <div className="max-w-2xl mx-auto text-center">
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <div className="bg-green-100 p-4 rounded-full mx-auto mb-6 w-20 h-20 flex items-center justify-center">
-            <CheckCircle className="w-10 h-10 text-green-600" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">Agendamento Confirmado!</h2>
-          <p className="text-gray-600 mb-6">
-            Seu agendamento foi confirmado com sucesso. Você receberá um email de confirmação em breve.
-          </p>
-          <div className="bg-gray-50 p-4 rounded-lg mb-6 text-left">
-            <h3 className="font-semibold text-gray-800 mb-2">Detalhes do Agendamento:</h3>
-            <div className="space-y-2 text-sm text-gray-600">
-              <p><strong>Data:</strong> {formatDate(selectedDate)}</p>
-              <p><strong>Horário:</strong> {selectedTime}</p>
-              <p><strong>Médico:</strong> {doctor?.name}</p>
-              <p><strong>Especialidade:</strong> {specialty?.name}</p>
-              <p><strong>Paciente:</strong> {patientData.name}</p>
-              <p><strong>Convênio:</strong> {insurance?.name || 'Particular'}</p>
-            </div>
-          </div>
-
-          <div className="flex space-x-4 justify-center">
-            <button
-              onClick={handleBackToBooking}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Fazer Novo Agendamento
-            </button>
-            <button
-              onClick={() => dispatch({ type: 'SET_VIEW', payload: 'login' })}
-              className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              Voltar ao Início
-            </button>
+  return (
+    <div className="max-w-2xl mx-auto text-center">
+      <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="bg-green-100 p-4 rounded-full mx-auto mb-6 w-20 h-20 flex items-center justify-center">
+          <CheckCircle className="w-10 h-10 text-green-600" />
+        </div>
+        <h2 className="text-3xl font-bold text-gray-800 mb-4">Agendamento Confirmado!</h2>
+        <p className="text-gray-600 mb-6">
+          Seu agendamento foi confirmado com sucesso. Você receberá um email de confirmação em breve.
+        </p>
+        <div className="bg-gray-50 p-4 rounded-lg mb-6 text-left">
+          <h3 className="font-semibold text-gray-800 mb-2">Detalhes do Agendamento:</h3>
+          <div className="space-y-2 text-sm text-gray-600">
+            <p><strong>Data:</strong> {formatDate(selectedDate)}</p>
+            <p><strong>Horário:</strong> {selectedTime}</p>
+            <p><strong>Médico:</strong> {doctor?.name}</p>
+            <p><strong>Especialidade:</strong> {specialty?.name}</p>
+            <p><strong>Paciente:</strong> {patientData.name}</p>
+            <p><strong>Convênio:</strong> {insurance?.name || 'Particular'}</p>
           </div>
         </div>
+
+        <div className="flex space-x-4 justify-center">
+          <button
+            onClick={handleBackToBooking}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Fazer Novo Agendamento
+          </button>
+          <button
+            onClick={() => dispatch({ type: 'SET_VIEW', payload: 'login' })}
+            className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Voltar ao Início
+          </button>
+        </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
+
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -453,7 +453,7 @@ const generateTimeSlots = (
         <p className="text-gray-600">
           {selectedDoctor ? `Agendamento com ${selectedDoctor.name}` : `Agendamento para ${selectedSpecialty?.name}`}
         </p>
-      </div>
+        </div>
 
       {/* Progress Steps */}
       <div className="flex justify-center mb-8">
