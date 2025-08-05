@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext'; // se estiver usando contexto para login
 import { Mail, Lock } from 'lucide-react'; // ícones úteis para os campos de login
-import { supabase } from '../../lib/supabaseClient'; // login via Supabase
+import { supabase } from '../../lib/supabase'; // login via Supabase
 
 
 const LoginScreen: React.FC = () => {
