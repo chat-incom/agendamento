@@ -374,30 +374,31 @@ const generateTimeSlots = (
       }
 
       // Atualizar estado local
-     const newAppointment: Appointment = {
-  id: appointmentData.id,
-  doctorId: doctor.id,
-  date: selectedDate,
-  time: selectedTime,
-  patient: patientData,
-  insuranceId: selectedInsurance || undefined,
-  status: 'scheduled',
-  createdAt: new Date(),
-};
+       const newAppointment: Appointment = {
+         id: appointmentData.id,
+         doctorId: doctor.id,
+         date: selectedDate,
+         time: selectedTime,
+         patient: patientData,
+         insuranceId: selectedInsurance || undefined,
+         status: 'scheduled',
+         createdAt: new Date(),
+       };
 
-dispatch({ type: 'ADD_APPOINTMENT', payload: newAppointment });
-setShowSuccess(true);
-} catch (error) {
-  console.error('Erro ao confirmar agendamento:', error);
-  alert('Erro ao confirmar agendamento. Tente novamente.');
-} finally {
-  setLoading(false);
-}
+       dispatch({ type: 'ADD_APPOINTMENT', payload: newAppointment });
+       setShowSuccess(true);
+     } catch (error) {
+       console.error('Erro ao confirmar agendamento:', error);
+       alert('Erro ao confirmar agendamento. Tente novamente.');
+     } finally {
+       setLoading(false);
+     }
+   };
 
-const handleBackToBooking = () => {
-  dispatch({ type: 'SET_VIEW', payload: 'booking' });
-  setShowSuccess(false);
-};
+   const handleBackToBooking = () => {
+     dispatch({ type: 'SET_VIEW', payload: 'booking' });
+     setShowSuccess(false);
+   };
 
 if (showSuccess) {
   const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
