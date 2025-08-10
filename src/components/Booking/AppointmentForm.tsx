@@ -142,182 +142,129 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     loadAvailableDates();
   }, [selectedDoctor, selectedSpecialty, state.doctors]);
 
-  // resto do componente...
-};
-
-
-// Função auxiliar para pegar o dia no formato aceito pelo banco
-const getDayName = (date: string): string => {
-  const days = [
-    'Domingo', 'Segunda', 'Terça', 'Quarta',
-    'Quinta', 'Sexta', 'Sábado'
-  ];
-  return days[new Date(date).getDay()];
-};
-
-// Função para gerar os horários disponíveis
-const generateTimeSlots = (
-  workingHours: {
-    day: string;
-    startTime: string;
-    endTime: string;
-    intervalMinutes: number;
-  },
-  date: string,
-  appointments: Appointment[],
-  doctorId: string
-): TimeSlot[] => {
-  const slots: TimeSlot[] = [];
-
-  const start = new Date(`${date}T${workingHours.startTime}`);
-  const end = new Date(`${date}T${workingHours.endTime}`);
-
-  let current = new Date(start);
-
-  while (current < end) {
-    const timeString = current.toTimeString().slice(0, 5); // HH:mm
-
-    const isBooked = appointments.some(
-      apt => apt.time.slice(0, 5) === timeString
-    );
-
-    slots.push({
-      doctorId,
-      date,
-      time: timeString,
-      available: !isBooked,
-      doctorName: '', // preenchido depois
-    });
-
-    current.setMinutes(current.getMinutes() + workingHours.intervalMinutes);
-  }
-
-  return slots;
-};
-  
-
   // Carregar horários quando data é selecionada
- useEffect(() => {
-  const loadTimeSlots = async () => {
-    if (!selectedDate) {
-      setTimeSlots([]);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const formattedDate = new Date(selectedDate).toISOString().split('T')[0];
-      const dayName = getDayName(selectedDate);
-
-      let doctorIds: string[] = [];
-      if (selectedDoctor) {
-        doctorIds = [selectedDoctor.id];
-      } else if (selectedSpecialty) {
-        doctorIds = state.doctors
-          .filter(d => d.specialtyId === selectedSpecialty.id)
-          .map(d => d.id);
-      }
-
-      if (doctorIds.length === 0) {
-        console.warn('Nenhum médico encontrado para a especialidade selecionada');
+  useEffect(() => {
+    const loadTimeSlots = async () => {
+      if (!selectedDate) {
         setTimeSlots([]);
-        setLoading(false);
         return;
       }
 
-      console.log('selectedDate:', formattedDate);
-      console.log('dayName:', dayName);
-      console.log('doctorIds:', doctorIds);
+      setLoading(true);
+      try {
+        const formattedDate = new Date(selectedDate).toISOString().split('T')[0];
+        const dayName = getDayName(selectedDate);
+
+        let doctorIds: string[] = [];
+        if (selectedDoctor) {
+          doctorIds = [selectedDoctor.id];
+        } else if (selectedSpecialty) {
+          doctorIds = state.doctors
+            .filter(d => d.specialtyId === selectedSpecialty.id)
+            .map(d => d.id);
+        }
+
+        if (doctorIds.length === 0) {
+          console.warn('Nenhum médico encontrado para a especialidade selecionada');
+          setTimeSlots([]);
+          setLoading(false);
+          return;
+        }
+
+        console.log('selectedDate:', formattedDate);
+        console.log('dayName:', dayName);
+        console.log('doctorIds:', doctorIds);
 
         // Buscar agenda dos médicos para o dia
         const { data: agendaData, error: agendaError } = await supabase
-        .from('agenda')
-        .select('*')
-        .in('medico_id', doctorIds)
-        .eq('dia_semana', dayName);
+          .from('agenda')
+          .select('*')
+          .in('medico_id', doctorIds)
+          .eq('dia_semana', dayName);
 
-      if (agendaError) {
-        console.error('Erro ao carregar agenda:', agendaError);
-        setTimeSlots([]);
-        return;
-      }
+        if (agendaError) {
+          console.error('Erro ao carregar agenda:', agendaError);
+          setTimeSlots([]);
+          return;
+        }
 
-      console.log('agendaData:', agendaData);
+        console.log('agendaData:', agendaData);
 
         // Buscar agendamentos existentes para a data
-       const { data: appointmentsData, error: appointmentsError } = await supabase
-        .from('agendamentos')
-        .select('medico_id, horario')
-        .in('medico_id', doctorIds)
-        .eq('data', formattedDate);
+        const { data: appointmentsData, error: appointmentsError } = await supabase
+          .from('agendamentos')
+          .select('medico_id, horario')
+          .in('medico_id', doctorIds)
+          .eq('data', formattedDate);
 
-      if (appointmentsError) {
-        console.error('Erro ao carregar agendamentos:', appointmentsError);
-      }
+        if (appointmentsError) {
+          console.error('Erro ao carregar agendamentos:', appointmentsError);
+        }
 
-      console.log('appointmentsData:', appointmentsData);
+        console.log('appointmentsData:', appointmentsData);
 
-      const existingAppointments = appointmentsData || [];
-      const allSlots: TimeSlot[] = [];
+        const existingAppointments = appointmentsData || [];
+        const allSlots: TimeSlot[] = [];
         
         // Gerar slots para cada médico
         agendaData?.forEach(agenda => {
-        const doctor = state.doctors.find(d => d.id === agenda.medico_id);
-        if (!doctor) {
-          console.warn('Médico não encontrado em state.doctors:', agenda.medico_id);
-          return;
-        }
-         const workingHours = {
-          day: agenda.dia_semana,
-          startTime: agenda.horario_inicio,
-          endTime: agenda.horario_fim,
-          intervalMinutes: agenda.tempo_intervalo || 30,
-        };
+          const doctor = state.doctors.find(d => d.id === agenda.medico_id);
+          if (!doctor) {
+            console.warn('Médico não encontrado em state.doctors:', agenda.medico_id);
+            return;
+          }
+          const workingHours = {
+            day: agenda.dia_semana,
+            startTime: agenda.horario_inicio,
+            endTime: agenda.horario_fim,
+            intervalMinutes: agenda.tempo_intervalo || 30,
+          };
 
-         console.log('Gerando horários para:', doctor.name, workingHours);
+          console.log('Gerando horários para:', doctor.name, workingHours);
 
-        const doctorAppointments = existingAppointments
-          .filter(apt => apt.medico_id === agenda.medico_id)
-          .map(apt => ({
-            id: '',
-            doctorId: apt.medico_id,
-            date: formattedDate,
-            time: apt.horario,
-            patient: { name: '', birthDate: '', city: '', phone: '', email: '' },
-            status: 'scheduled' as const,
-            createdAt: new Date(),
-          }));
+          const doctorAppointments = existingAppointments
+            .filter(apt => apt.medico_id === agenda.medico_id)
+            .map(apt => ({
+              id: '',
+              doctorId: apt.medico_id,
+              date: formattedDate,
+              time: apt.horario,
+              patient: { name: '', birthDate: '', city: '', phone: '', email: '' },
+              status: 'scheduled' as const,
+              createdAt: new Date(),
+            }));
 
           const slots = generateTimeSlots(
-          workingHours,
-          formattedDate,
-          doctorAppointments,
-          agenda.medico_id
-        );
+            workingHours,
+            formattedDate,
+            doctorAppointments,
+            agenda.medico_id,
+            doctor.name
+          );
           
           // Adicionar informação do médico aos slots
-         const slotsWithDoctor = slots.map(slot => ({
-          ...slot,
-          doctorName: doctor.name,
-        }));
+          const slotsWithDoctor = slots.map(slot => ({
+            ...slot,
+            doctorName: doctor.name,
+          }));
 
-        allSlots.push(...slotsWithDoctor);
-      });
+          allSlots.push(...slotsWithDoctor);
+        });
 
-      allSlots.sort((a, b) => a.time.localeCompare(b.time));
-      setTimeSlots(allSlots);
+        allSlots.sort((a, b) => a.time.localeCompare(b.time));
+        setTimeSlots(allSlots);
 
-      console.log('timeSlots gerados:', allSlots);
-    } catch (error) {
-      console.error('Erro ao carregar horários:', error);
-      setTimeSlots([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+        console.log('timeSlots gerados:', allSlots);
+      } catch (error) {
+        console.error('Erro ao carregar horários:', error);
+        setTimeSlots([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  loadTimeSlots();
-}, [selectedDate, selectedDoctor, selectedSpecialty, state.doctors]);
+    loadTimeSlots();
+  }, [selectedDate, selectedDoctor, selectedSpecialty, state.doctors]);
 
   const getDoctorForTimeSlot = (time: string): Doctor | null => {
     if (selectedDoctor) return selectedDoctor;
@@ -374,78 +321,77 @@ const generateTimeSlots = (
       }
 
       // Atualizar estado local
-       const newAppointment: Appointment = {
-         id: appointmentData.id,
-         doctorId: doctor.id,
-         date: selectedDate,
-         time: selectedTime,
-         patient: patientData,
-         insuranceId: selectedInsurance || undefined,
-         status: 'scheduled',
-         createdAt: new Date(),
-       };
+      const newAppointment: Appointment = {
+        id: appointmentData.id,
+        doctorId: doctor.id,
+        date: selectedDate,
+        time: selectedTime,
+        patient: patientData,
+        insuranceId: selectedInsurance || undefined,
+        status: 'scheduled',
+        createdAt: new Date(),
+      };
 
-       dispatch({ type: 'ADD_APPOINTMENT', payload: newAppointment });
-       setShowSuccess(true);
-     } catch (error) {
-       console.error('Erro ao confirmar agendamento:', error);
-       alert('Erro ao confirmar agendamento. Tente novamente.');
-     } finally {
-       setLoading(false);
-     }
-   };
+      dispatch({ type: 'ADD_APPOINTMENT', payload: newAppointment });
+      setShowSuccess(true);
+    } catch (error) {
+      console.error('Erro ao confirmar agendamento:', error);
+      alert('Erro ao confirmar agendamento. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-   const handleBackToBooking = () => {
-     dispatch({ type: 'SET_VIEW', payload: 'booking' });
-     setShowSuccess(false);
-   };
+  const handleBackToBooking = () => {
+    dispatch({ type: 'SET_VIEW', payload: 'booking' });
+    setShowSuccess(false);
+  };
 
-if (showSuccess) {
-  const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
-  const specialty = selectedSpecialty || state.specialties.find(s => s.id === doctor?.specialtyId);
-  const insurance = selectedInsurance ? state.insurances.find(i => i.id === selectedInsurance) : null;
+  if (showSuccess) {
+    const doctor = selectedDoctor || getDoctorForTimeSlot(selectedTime);
+    const specialty = selectedSpecialty || state.specialties.find(s => s.id === doctor?.specialtyId);
+    const insurance = selectedInsurance ? state.insurances.find(i => i.id === selectedInsurance) : null;
 
-  return (
-    <div className="max-w-2xl mx-auto text-center">
-      <div className="bg-white rounded-xl shadow-lg p-8">
-        <div className="bg-green-100 p-4 rounded-full mx-auto mb-6 w-20 h-20 flex items-center justify-center">
-          <CheckCircle className="w-10 h-10 text-green-600" />
-        </div>
-        <h2 className="text-3xl font-bold text-gray-800 mb-4">Agendamento Confirmado!</h2>
-        <p className="text-gray-600 mb-6">
-          Seu agendamento foi confirmado com sucesso. Você receberá um email de confirmação em breve.
-        </p>
-        <div className="bg-gray-50 p-4 rounded-lg mb-6 text-left">
-          <h3 className="font-semibold text-gray-800 mb-2">Detalhes do Agendamento:</h3>
-          <div className="space-y-2 text-sm text-gray-600">
-            <p><strong>Data:</strong> {formatDate(selectedDate)}</p>
-            <p><strong>Horário:</strong> {selectedTime}</p>
-            <p><strong>Médico:</strong> {doctor?.name}</p>
-            <p><strong>Especialidade:</strong> {specialty?.name}</p>
-            <p><strong>Paciente:</strong> {patientData.name}</p>
-            <p><strong>Convênio:</strong> {insurance?.name || 'Particular'}</p>
+    return (
+      <div className="max-w-2xl mx-auto text-center">
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          <div className="bg-green-100 p-4 rounded-full mx-auto mb-6 w-20 h-20 flex items-center justify-center">
+            <CheckCircle className="w-10 h-10 text-green-600" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Agendamento Confirmado!</h2>
+          <p className="text-gray-600 mb-6">
+            Seu agendamento foi confirmado com sucesso. Você receberá um email de confirmação em breve.
+          </p>
+          <div className="bg-gray-50 p-4 rounded-lg mb-6 text-left">
+            <h3 className="font-semibold text-gray-800 mb-2">Detalhes do Agendamento:</h3>
+            <div className="space-y-2 text-sm text-gray-600">
+              <p><strong>Data:</strong> {formatDate(selectedDate)}</p>
+              <p><strong>Horário:</strong> {selectedTime}</p>
+              <p><strong>Médico:</strong> {doctor?.name}</p>
+              <p><strong>Especialidade:</strong> {specialty?.name}</p>
+              <p><strong>Paciente:</strong> {patientData.name}</p>
+              <p><strong>Convênio:</strong> {insurance?.name || 'Particular'}</p>
+            </div>
+          </div>
+
+          <div className="flex space-x-4 justify-center">
+            <button
+              onClick={handleBackToBooking}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Fazer Novo Agendamento
+            </button>
+            <button
+              onClick={() => dispatch({ type: 'SET_VIEW', payload: 'login' })}
+              className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Voltar ao Início
+            </button>
           </div>
         </div>
-
-        <div className="flex space-x-4 justify-center">
-          <button
-            onClick={handleBackToBooking}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Fazer Novo Agendamento
-          </button>
-          <button
-            onClick={() => dispatch({ type: 'SET_VIEW', payload: 'login' })}
-            className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            Voltar ao Início
-          </button>
-        </div>
       </div>
-    </div>
-  );
-}
-
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -454,7 +400,7 @@ if (showSuccess) {
         <p className="text-gray-600">
           {selectedDoctor ? `Agendamento com ${selectedDoctor.name}` : `Agendamento para ${selectedSpecialty?.name}`}
         </p>
-        </div>
+      </div>
 
       {/* Progress Steps */}
       <div className="flex justify-center mb-8">
@@ -709,7 +655,7 @@ if (showSuccess) {
         )}
       </div>
     </div>
- );
+  );
 };
 
 export default AppointmentForm;
