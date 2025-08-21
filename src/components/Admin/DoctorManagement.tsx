@@ -82,6 +82,11 @@ const DoctorManagement: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('Usuário não autenticado');
+      return;
+    }
     if (editingDoctorId) {
       // Atualização
       const { error } = await supabase
@@ -139,6 +144,7 @@ const DoctorManagement: React.FC = () => {
           nome: formData.name,
           crm: formData.crm,
           especialidade_id: formData.specialtyId,
+          criado_por: user.id,
         })
         .select()
         .single();

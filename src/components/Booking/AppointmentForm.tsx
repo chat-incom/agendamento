@@ -41,8 +41,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
 
   // Função auxiliar: obter o nome do dia
   const getDayName = (date: string): string => {
+    const dateObj = new Date(date + 'T00:00:00');
     const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-    return days[new Date(date).getDay()];
+    return days[dateObj.getDay()];
   };
 
   // Função: gerar horários disponíveis

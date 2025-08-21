@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import { supabase } from '../../lib/supabaseClient';
 import { LogOut, Users, Calendar, Shield, Activity } from 'lucide-react';
 
 import SpecialtyManagement from './SpecialtyManagement';
@@ -12,6 +13,7 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'specialties' | 'doctors' | 'insurances' | 'appointments'>('specialties');
 
   const handleLogout = () => {
+    supabase.auth.signOut();
     dispatch({ type: 'LOGOUT' });
   };
 

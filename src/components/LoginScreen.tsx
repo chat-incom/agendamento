@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabaseClient';
 import { Calendar, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 
 const LoginScreen: React.FC = () => {
@@ -18,15 +19,26 @@ const LoginScreen: React.FC = () => {
     setCarregando(true);
     setErro('');
 
-    // Simulação de login - substitua pela lógica real de autenticação
     try {
-      if (email === 'admin@clinica.com' && senha === 'admin123') {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: senha,
+      });
+
+      if (error) {
+        setErro('Email ou senha incorretos');
+        return;
+      }
+
+      if (data.user) {
         dispatch({ 
           type: 'LOGIN', 
-          payload: { email, role: 'admin' } 
+          payload: { 
+            email: data.user.email, 
+            role: 'admin',
+            id: data.user.id 
+          } 
         });
-      } else {
-        setErro('Email ou senha incorretos');
       }
     } catch (error) {
       setErro('Erro ao fazer login. Tente novamente.');
@@ -44,8 +56,13 @@ const LoginScreen: React.FC = () => {
     }
 
     try {
-      // Simulação de recuperação de senha
-      setMensagemRecuperacao('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
+      const { error } = await supabase.auth.resetPasswordForEmail(emailRecuperacao);
+      
+      if (error) {
+        setMensagemRecuperacao('Erro ao enviar e-mail de recuperação');
+      } else {
+        setMensagemRecuperacao('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
+      }
     } catch (error) {
       setMensagemRecuperacao('Erro ao enviar e-mail de recuperação');
     }
@@ -137,13 +154,6 @@ const LoginScreen: React.FC = () => {
           </form>
 
           {/* Credenciais de demonstração */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-600 text-center mb-2">Credenciais de demonstração:</p>
-            <p className="text-xs text-gray-500 text-center">
-              <strong>Email:</strong> admin@clinica.com<br />
-              <strong>Senha:</strong> admin123
-            </p>
-          </div>
 
           {/* Recuperação de senha */}
           {mostrarRecuperarSenha && (

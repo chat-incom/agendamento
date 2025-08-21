@@ -32,6 +32,13 @@ const SpecialtyManagement: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('Usuário não autenticado');
+      return;
+    }
+
     if (editingSpecialty) {
       const { error } = await supabase
         .from('especialidades')
@@ -50,7 +57,7 @@ const SpecialtyManagement: React.FC = () => {
     } else {
       const { data, error } = await supabase
         .from('especialidades')
-        .insert([{ nome: formData.name }])
+        .insert([{ nome: formData.name, criado_por: user.id }])
         .select()
         .single();
 

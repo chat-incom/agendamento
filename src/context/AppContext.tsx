@@ -118,6 +118,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [state, dispatch] = useReducer(appReducer, initialState);
 
   useEffect(() => {
+    // Verificar se há usuário logado
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        dispatch({
+          type: 'LOGIN',
+          payload: {
+            email: user.email,
+            role: 'admin',
+            id: user.id
+          }
+        });
+      }
+    };
+
+    checkUser();
+
     const loadData = async () => {
       try {
         // Load specialties
@@ -157,11 +174,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               specialtyId: d.especialidade_id || '',
               insurances: d.medico_convenios?.map((mc: any) => mc.convenio_id) || [],
               workingHours: d.agenda?.map((a: any) => ({
-                day: a.dia_semana?.toLowerCase() || '',
+                day: a.dia_semana || '',
                 startTime: a.horario_inicio,
                 endTime: a.horario_fim,
                 intervalMinutes: a.tempo_intervalo || 30
               })) || []
+              createdAt: new Date(d.created_at)
             }))
           });
         }
