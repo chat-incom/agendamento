@@ -178,7 +178,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                 startTime: a.horario_inicio,
                 endTime: a.horario_fim,
                 intervalMinutes: a.tempo_intervalo || 30
-              })) || []
+              })) || [],
               createdAt: new Date(d.created_at)
             }))
           });
