@@ -284,28 +284,42 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
 
     setLoading(true);
     try {
-      // Criar o agendamento diretamente com dados do paciente
-const { data: appointmentData, error: appointmentError } = await supabase
-  .from('agendamentos')
-  .insert({
-    medico_id: doctor.id,
-    data: selectedDate,
-    horario: selectedTime,
-    convenio_id: selectedInsurance || null,
-    nome_paciente: patientData.name,
-    data_nascimento: patientData.birthDate,
-    telefone: patientData.phone,
-    cidade: patientData.city,
-    email: patientData.email || null
-  })
-  .select()
-  .single();
+      // Primeiro, criar o usuário
+      const { data: userData, error: userError } = await supabase
+        .from('usuarios')
+        .insert({
+          nome: patientData.name,
+          data_nascimento: patientData.birthDate,
+          cidade: patientData.city,
+          contato: patientData.phone
+        })
+        .select()
+        .single();
 
-if (appointmentError) {
-  console.error('Erro ao criar agendamento:', appointmentError);
-  alert('Erro ao criar agendamento. Tente novamente.');
-  return;
-}
+      if (userError) {
+        console.error('Erro ao criar usuário:', userError);
+        alert('Erro ao criar usuário. Tente novamente.');
+        return;
+      }
+
+      // Depois, criar o agendamento
+      const { data: appointmentData, error: appointmentError } = await supabase
+        .from('agendamentos')
+        .insert({
+          usuario_id: userData.id,
+          medico_id: doctor.id,
+          data: selectedDate,
+          horario: selectedTime,
+          convenio_id: selectedInsurance || null
+        })
+        .select()
+        .single();
+
+      if (appointmentError) {
+        console.error('Erro ao criar agendamento:', appointmentError);
+        alert('Erro ao criar agendamento. Tente novamente.');
+        return;
+      }
 
       // Atualizar estado local
       const newAppointment: Appointment = {
@@ -646,3 +660,4 @@ if (appointmentError) {
 };
 
 export default AppointmentForm;
+
