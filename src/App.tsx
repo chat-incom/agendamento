@@ -3,7 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import LoginScreen from './components/LoginScreen';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import BookingSystem from './components/Booking/BookingSystem';
-import ResetPasswordScreen from './components/ResetPasswordScreen'; // Importe o novo componente
+import ResetPasswordScreen from './components/Booking/ResetPasswordScreen';
 
 const AppContent: React.FC = () => {
   const { state } = useApp();

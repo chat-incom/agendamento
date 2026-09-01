@@ -8,12 +8,12 @@ interface AppState {
   insurances: Insurance[];
   appointments: Appointment[];
   isLoggedIn: boolean;
-  currentView: 'login' | 'admin' | 'booking';
+  currentView: 'login' | 'admin' | 'booking' | 'reset-password';
   user: any;
 }
 
 type AppAction = 
-  | { type: 'SET_VIEW'; payload: 'login' | 'admin' | 'booking' }
+  | { type: 'SET_VIEW'; payload: 'login' | 'admin' | 'booking' | 'reset-password' }
   | { type: 'LOGIN'; payload: any }
   | { type: 'LOGOUT' }
   | { type: 'SET_SPECIALTIES'; payload: Specialty[] }
@@ -135,6 +135,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     checkUser();
 
+    // Detectar evento de recuperação de senha (quando o usuário clica no link do email)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      (async () => {
+        if (event === 'PASSWORD_RECOVERY' && session) {
+          dispatch({ type: 'SET_VIEW', payload: 'reset-password' });
+        }
+      })();
+    });
+
     const loadData = async () => {
       try {
         // Load specialties
@@ -189,6 +198,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     loadData();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
   return (
     <AppContext.Provider value={{ state, dispatch }}>

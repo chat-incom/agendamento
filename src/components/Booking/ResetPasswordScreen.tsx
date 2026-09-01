@@ -1,7 +1,6 @@
-// components/ResetPasswordScreen.tsx
 import React, { useState, useEffect } from 'react';
-import { useApp } from '../context/AppContext';
-import { supabase } from '../lib/supabaseClient';
+import { useApp } from '../../context/AppContext';
+import { supabase } from '../../lib/supabaseClient';
 import { Lock, Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 
 const ResetPasswordScreen: React.FC = () => {
@@ -15,42 +14,25 @@ const ResetPasswordScreen: React.FC = () => {
   const [sessaoValida, setSessaoValida] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Verifica se o usuário está autenticado via token de recuperação
+    let mounted = true;
+
     const verificarSessao = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
+      if (!mounted) return;
+
       if (session) {
         setSessaoValida(true);
       } else {
-        // Tenta extrair o token da URL (para casos onde o Supabase não fez automaticamente)
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        
-        if (accessToken) {
-          try {
-            const { data, error } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: ''
-            });
-            
-            if (error) {
-              setSessaoValida(false);
-              setErro('Link inválido ou expirado. Solicite um novo reset de senha.');
-            } else {
-              setSessaoValida(true);
-            }
-          } catch (error) {
-            setSessaoValida(false);
-            setErro('Erro ao validar o link de recuperação.');
-          }
-        } else {
-          setSessaoValida(false);
-          setErro('Link inválido ou expirado. Solicite um novo reset de senha.');
-        }
+        setSessaoValida(false);
+        setErro('Link inválido ou expirado. Solicite um novo reset de senha.');
       }
     };
 
     verificarSessao();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -58,7 +40,6 @@ const ResetPasswordScreen: React.FC = () => {
     setErro('');
     setMensagem('');
 
-    // Validações
     if (novaSenha.length < 6) {
       setErro('A senha deve ter pelo menos 6 caracteres');
       return;
@@ -73,15 +54,14 @@ const ResetPasswordScreen: React.FC = () => {
 
     try {
       const { error } = await supabase.auth.updateUser({
-        password: novaSenha
+        password: novaSenha,
       });
 
       if (error) {
         setErro('Erro ao atualizar senha: ' + error.message);
       } else {
-        setMensagem('✅ Senha atualizada com sucesso!');
-        
-        // Redireciona para o login após 2 segundos
+        setMensagem('Senha atualizada com sucesso!');
+
         setTimeout(() => {
           dispatch({ type: 'SET_VIEW', payload: 'login' });
         }, 2000);
@@ -93,7 +73,6 @@ const ResetPasswordScreen: React.FC = () => {
     }
   };
 
-  // Se a sessão ainda está sendo verificada
   if (sessaoValida === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">

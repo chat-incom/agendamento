@@ -56,7 +56,9 @@ const LoginScreen: React.FC = () => {
     }
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(emailRecuperacao);
+      const { error } = await supabase.auth.resetPasswordForEmail(emailRecuperacao, {
+        redirectTo: window.location.origin,
+      });
       
       if (error) {
         setMensagemRecuperacao('Erro ao enviar e-mail de recuperação');
