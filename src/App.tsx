@@ -3,6 +3,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import LoginScreen from './components/LoginScreen';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import BookingSystem from './components/Booking/BookingSystem';
+import ResetPasswordScreen from './components/ResetPasswordScreen'; // Importe o novo componente
 
 const AppContent: React.FC = () => {
   const { state } = useApp();
@@ -14,6 +15,8 @@ const AppContent: React.FC = () => {
       return <AdminDashboard />;
     case 'booking':
       return <BookingSystem />;
+    case 'reset-password': // Adicione o novo caso
+      return <ResetPasswordScreen />;
     default:
       return <LoginScreen />;
   }
