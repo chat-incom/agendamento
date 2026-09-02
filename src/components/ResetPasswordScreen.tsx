@@ -1,10 +1,11 @@
+// components/ResetPasswordScreen.tsx
 import React, { useState, useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
-import { supabase } from '../../lib/supabaseClient';
+import { useApp } from '../context/AppContext'; // ✅ Caminho corrigido (apenas um ../)
+import { supabase } from '../lib/supabaseClient';
 import { Lock, Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 
 const ResetPasswordScreen: React.FC = () => {
-  const { dispatch } = useApp();
+  const { navigateTo, setLoading, addNotification } = useApp();
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -14,25 +15,40 @@ const ResetPasswordScreen: React.FC = () => {
   const [sessaoValida, setSessaoValida] = useState<boolean | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-
     const verificarSessao = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!mounted) return;
-
+      
       if (session) {
         setSessaoValida(true);
       } else {
-        setSessaoValida(false);
-        setErro('Link inválido ou expirado. Solicite um novo reset de senha.');
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        
+        if (accessToken) {
+          try {
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: ''
+            });
+            
+            if (error) {
+              setSessaoValida(false);
+              setErro('Link inválido ou expirado. Solicite um novo reset de senha.');
+            } else {
+              setSessaoValida(true);
+            }
+          } catch (error) {
+            setSessaoValida(false);
+            setErro('Erro ao validar o link de recuperação.');
+          }
+        } else {
+          setSessaoValida(false);
+          setErro('Link inválido ou expirado. Solicite um novo reset de senha.');
+        }
       }
     };
 
     verificarSessao();
-
-    return () => {
-      mounted = false;
-    };
   }, []);
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -51,28 +67,35 @@ const ResetPasswordScreen: React.FC = () => {
     }
 
     setCarregando(true);
+    setLoading(true);
 
     try {
       const { error } = await supabase.auth.updateUser({
-        password: novaSenha,
+        password: novaSenha
       });
 
       if (error) {
         setErro('Erro ao atualizar senha: ' + error.message);
       } else {
-        setMensagem('Senha atualizada com sucesso!');
-
+        setMensagem('✅ Senha atualizada com sucesso!');
+        addNotification({
+          type: 'success',
+          message: 'Senha atualizada com sucesso! Faça login com sua nova senha.'
+        });
+        
         setTimeout(() => {
-          dispatch({ type: 'SET_VIEW', payload: 'login' });
+          navigateTo('login');
         }, 2000);
       }
     } catch (error) {
       setErro('Erro ao atualizar senha. Tente novamente.');
     } finally {
       setCarregando(false);
+      setLoading(false);
     }
   };
 
+  // Se a sessão ainda está sendo verificada
   if (sessaoValida === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -89,7 +112,7 @@ const ResetPasswordScreen: React.FC = () => {
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <button
-            onClick={() => dispatch({ type: 'SET_VIEW', payload: 'login' })}
+            onClick={() => navigateTo('login')}
             className="flex items-center text-gray-600 hover:text-gray-800 mb-6 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -115,7 +138,7 @@ const ResetPasswordScreen: React.FC = () => {
                 </div>
               </div>
               <button
-                onClick={() => dispatch({ type: 'SET_VIEW', payload: 'login' })}
+                onClick={() => navigateTo('login')}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
               >
                 Voltar para o login
